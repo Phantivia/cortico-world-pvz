@@ -1,0 +1,4 @@
+# 索引一律 LF。批处理是例外:cmd.exe 解析 LF 文件的 goto 标签会出错,而
+# native/build.cmd 是操作员在 Windows 上直接跑的。
+* text=auto eol=lf
+*.cmd text eol=crlf
