@@ -1,0 +1,8 @@
+LIBRARY pvz-implant
+EXPORTS
+    CorticoPvzSetPipeW=_CorticoPvzSetPipeW@4
+    CorticoPvzPrepareFocusLossPolicy=_CorticoPvzPrepareFocusLossPolicy@4
+    CorticoPvzPrepareManagedWindow=_CorticoPvzPrepareManagedWindow@4
+    CorticoPvzConfigure=_CorticoPvzConfigure@4
+    CorticoPvzVerifyOwnerW=_CorticoPvzVerifyOwnerW@4
+    CorticoPvzVerifyBuildW=_CorticoPvzVerifyBuildW@4

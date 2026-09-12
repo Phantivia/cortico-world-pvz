@@ -1,0 +1,43 @@
+{
+  "name": "cortico-world-pvz",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cortico World: the original PopCap Plants vs. Zombies as a semantic, event-driven World — x86 implant, named-pipe bridge, task queue with receipts",
+  "license": "MIT",
+  "keywords": [
+    "cortico-world",
+    "cortico",
+    "pvz",
+    "plants-vs-zombies"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32"
+  ],
+  "packageManager": "pnpm@11.5.0",
+  "main": "./src/index.ts",
+  "cortico": {
+    "kind": "world",
+    "api": 3,
+    "consoleClient": "dist/console.js"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build-console.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
