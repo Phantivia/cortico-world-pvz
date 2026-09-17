@@ -41,6 +41,7 @@ The disclosure boundary is enforced inside the implant, before JSON crosses the 
 - Entity health is reduced to sprite-readable condition bands.
 - Every disclosed plant includes its cell, condition, and semantic phase. Arming plants such as Potato Mine expose the phase visible to a player.
 - Every disclosed zombie includes its cell, condition, semantic phase, and speed band.
+- Card cooldown seconds and percentages report the remaining recharge interval, computed from the total duration minus elapsed recharge ticks.
 - The seed-picker may expose the preview roster because the game shows it to the player; the same pre-spawned entities are omitted after play begins.
 
 `pvz_glance` is mounted only when the active model provider accepts images. Its frame is for compatibility diagnosis and does not loosen the semantic filter.

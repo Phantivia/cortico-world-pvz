@@ -4479,13 +4479,15 @@ void AppendCards(std::string& output, const BoardView& board, int mode) {
         const int cost = CurrentCardCost(board, mode, card);
         const bool conveyor = HasConveyorSeedBank(mode, board.level);
         const bool affordable = CardAffordable(board, mode, card);
+        const int cooldownRemaining = card.refreshing
+            ? std::max(0, card.refreshTime - card.refreshCounter) : 0;
         static constexpr const char* kCooldownNames[] = {"ready", "short", "medium", "long"};
         const char* cooldown = kCooldownNames[
-            CooldownBucket(packetCooldownReady, card.refreshCounter, card.refreshTime)];
+            CooldownBucket(packetCooldownReady, cooldownRemaining, card.refreshTime)];
         const int remainingPercent = CooldownRemainingPercent(
-            packetCooldownReady, card.refreshCounter, card.refreshTime);
+            packetCooldownReady, cooldownRemaining, card.refreshTime);
         const int remainingTenthsSeconds = CooldownRemainingTenthsSeconds(
-            packetCooldownReady, card.refreshCounter);
+            packetCooldownReady, cooldownRemaining);
         output += "{\"slot\":";
         AppendInt(output, card.slot);
         output += ",\"type\":";
