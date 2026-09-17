@@ -314,6 +314,23 @@ export function trackSnapshot(
   }
 
   const oldZombies = new Map((before.board?.zombies ?? []).map((z) => [z.id, z]));
+  if (entityContinuity) {
+    for (let row = 1; row <= after.board!.rows; row++) {
+      if ([before, after].some((snapshot) => snapshot.board!.cells.some((cell) =>
+        cell.row === row && (cell.blocker === 'fog_hidden' || cell.blocker === 'dark_hidden')))) continue;
+      const iceColumns = (snapshot: PvzSnapshot) => snapshot.board!.cells
+        .filter((cell) => cell.row === row && cell.blocker === 'ice_trail').map((cell) => cell.column);
+      const oldIce = iceColumns(before);
+      const newIce = iceColumns(after);
+      if (JSON.stringify(oldIce) === JSON.stringify(newIce)) continue;
+      events.push({
+        type: 'pvz.terrain.ice',
+        text: `[PvZ] ${rowText(row)}${newIce.length
+          ? `冰道覆盖第${newIce.join('、')}列，不能种植` : '冰道已清除'}`,
+        urgent: true,
+      });
+    }
+  }
   if (entityContinuity && after.modeName === 'portal_combat') {
     const portals = renderPortals(after.board!);
     if (JSON.stringify(portals) !== JSON.stringify(renderPortals(before.board!))) {

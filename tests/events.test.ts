@@ -11,6 +11,28 @@ import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
 import { renderSnapshot, renderTacticalSnapshot, compactSnapshot } from '../src/render.ts';
 
+it('可见冰道生长与清除改变地格和事件，遮挡不冒充清冰', () => {
+  const before = snapshot({ screen: 'board', mode: 28, modeName: 'bobsled_bonanza', board: boardState() });
+  const icy = structuredClone(before);
+  for (const cell of icy.board!.cells.filter(cell => cell.row === 1 && cell.column >= 5)) {
+    cell.blocker = 'ice_trail';
+    cell.playable = false;
+  }
+  for (const text of [renderSnapshot(icy), renderTacticalSnapshot(icy), JSON.stringify(compactSnapshot(icy))]) {
+    expect(text).toContain('冰道');
+  }
+  expect(trackSnapshot(icy, before)).toContainEqual(expect.objectContaining({
+    type: 'pvz.terrain.ice', text: '[PvZ] 第1排冰道覆盖第5、6、7、8、9列，不能种植', urgent: true,
+  }));
+  expect(trackSnapshot(before, icy)).toContainEqual(expect.objectContaining({
+    type: 'pvz.terrain.ice', text: '[PvZ] 第1排冰道已清除', urgent: true,
+  }));
+  expect(trackSnapshot(icy, icy).some(event => event.type === 'pvz.terrain.ice')).toBe(false);
+  const hidden = structuredClone(icy);
+  hidden.board!.cells.filter(cell => cell.row === 1).forEach(cell => { cell.blocker = 'fog_hidden'; cell.playable = null; });
+  expect(trackSnapshot(hidden, icy).some(event => event.type === 'pvz.terrain.ice')).toBe(false);
+});
+
 it('传送门配对包含右边界，换位和可见僵尸跨排移动产生事件', () => {
   const before = snapshot({ screen: 'board', mode: 26, modeName: 'portal_combat', board: boardState({
     gridItems: [
@@ -35,6 +57,8 @@ it('传送门配对包含右边界，换位和可见僵尸跨排移动产生事�
     expect.objectContaining({ type: 'pvz.zombie.relocated', text: expect.stringContaining('从第2排第9列移到第1排第2列'), urgent: true }),
   ]));
   expect(trackSnapshot(after, after).some(event => ['pvz.portals.changed', 'pvz.zombie.relocated'].includes(event.type))).toBe(false);
+  after.board!.gridItems.push({ id: 5, kind: 'round_portal', row: 1, column: 5 });
+  expect(renderSnapshot(after)).toContain('圆形传送门可见位置：第1排第5列、第4排右边界、第5排第3列');
   after.board!.disclosure = { entitiesVisible: false, phase: 'dark' };
   expect(renderSnapshot(after)).not.toContain('右边界');
   expect(trackSnapshot(after, before).some(event => event.type === 'pvz.portals.changed')).toBe(false);

@@ -4751,6 +4751,15 @@ const GridItemView* BlockingGridItemAt(const BoardView& board, int row, int colu
     return item == board.gridItems.end() ? nullptr : &*item;
 }
 
+bool IceAt(const BoardView& board, int row, int column) {
+    int timer = 0;
+    int minX = 800;
+    if (!SafeRead(board.address + pvz::board::iceTimer + row * sizeof(int), timer) || !timer ||
+        !SafeRead(board.address + pvz::board::iceMinX + row * sizeof(int), minX) || minX > 750) return false;
+    const int firstColumn = std::clamp(static_cast<int>(std::floor((minX - 28.0) / 80.0)), 0, 8);
+    return column >= firstColumn;
+}
+
 void AppendCells(std::string& output, const BoardView& board) {
     output.push_back('[');
     bool first = true;
@@ -4765,6 +4774,7 @@ void AppendCells(std::string& output, const BoardView& board) {
             const bool cellRendered = FogAllowsZombie(
                 board.address, 0, board.background, centerX, row);
             const bool dynamicVisible = board.entitiesVisible && cellRendered;
+            const bool ice = dynamicVisible && IceAt(board, row, column);
             const bool staticPlayable = square == 1 || square == 3 || square == 4;
             const bool occupancyUnknown = staticPlayable && !dynamicVisible;
             const PlantView* base = dynamicVisible ? BasePlantAt(board, row, column) : nullptr;
@@ -4776,6 +4786,7 @@ void AppendCells(std::string& output, const BoardView& board) {
             const char* blocker = occupancyUnknown
                                       ? (board.entitiesVisible ? "fog_hidden" : "dark_hidden")
                                       :
+                                  ice ? "ice_trail" :
                                   gridBlocker ? GridItemName(gridBlocker->type) :
                                   normal ? "occupied" :
                                   square == 3 && (!base || base->type != 16)
@@ -4789,7 +4800,7 @@ void AppendCells(std::string& output, const BoardView& board) {
             output += ",\"terrain\":";
             AppendString(output, terrain);
             output += ",\"playable\":";
-            if (!staticPlayable || !board.entitiesVisible) AppendBool(output, false);
+            if (!staticPlayable || !board.entitiesVisible || ice) AppendBool(output, false);
             else if (!cellRendered) output += "null";
             else AppendBool(output, true);
             output += ",\"blocker\":";
@@ -4817,6 +4828,7 @@ bool CanPlantCardAt(const BoardView& board, const CardView& card, int row, int c
         if (type == 11 || type == 21) return square == 1;
         return true;
     }
+    if (IceAt(board, row, column)) return false;
     const PlantView* base = BasePlantAt(board, row, column);
     const PlantView* normal = NormalPlantAt(board, row, column);
     const PlantView* pumpkin = PlantOfTypeAt(board, row, column, 30);

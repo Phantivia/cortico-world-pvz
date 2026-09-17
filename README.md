@@ -173,6 +173,7 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 - Cob Cannon verifies source readiness, target selection, and the subsequent cooldown state.
 - Seeing Stars publishes only its remaining painted cells as semantic objective observations. These cells are completed with a normal `plant` step using `starfruit`; they are never special-action targets.
 - Portal Combat reports both pairs, including portals at the visible right boundary outside the planting grid. Portal relocation and visible zombies changing rows emit urgent events.
+- Visible ice trails mark blocked cells and prevent planting there. Trail growth and removal emit row-specific terrain events; hidden cells retain their existing visibility rules.
 
 ## Research basis
 

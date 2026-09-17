@@ -256,7 +256,7 @@ function gridItemLabel(kind: string): string {
 export function blockerLabel(blocker: string): string {
   return ({
     requires_lily_pad: '需要荷叶', requires_flower_pot: '需要花盆', occupied: '已占用',
-    gravestone: '墓碑占用', crater: '弹坑占用', shovel_tutorial_target: '教程目标',
+    gravestone: '墓碑占用', crater: '弹坑占用', ice_trail: '冰道', shovel_tutorial_target: '教程目标',
     shovel_tutorial_locked: '教程锁定',
   } as Record<string, string>)[blocker] ?? '受阻';
 }
@@ -510,9 +510,9 @@ export function renderPortals(board: PvzBoardState): string[] {
   if (!board.disclosure.entitiesVisible) return [];
   return ['square_portal', 'round_portal'].flatMap((kind) => {
     const portals = sortedByCell(board.gridItems.filter((item) => item.kind === kind));
-    return portals.length ? [`${gridItemLabel(kind)}：${portals.map((item) =>
+    return portals.length ? [`${gridItemLabel(kind)}${portals.length > 2 ? '可见位置' : ''}：${portals.map((item) =>
       item.column > board.columns ? `${rowText(item.row)}右边界` : cellText(item.row, item.column)
-    ).join(' ↔ ')}`] : [];
+    ).join(portals.length === 2 ? ' ↔ ' : '、')}`] : [];
   });
 }
 
