@@ -26,6 +26,14 @@ function parsed(raw: unknown[]): PvzDoStep[] {
   return result.steps;
 }
 
+it('种子拾取植物名规范化并拒绝无关资源的植物选择器', () => {
+  expect(parsed([{ skill: 'collect', what: 'usable_seed', plant: '荷叶' }])).toEqual([
+    { skill: 'collect', what: 'usable_seed', plant: 'lily_pad', until: 'once' },
+  ]);
+  expect(parsePvzDo([{ skill: 'collect', what: 'coins', plant: '荷叶' }])).toHaveProperty('error');
+  expect(parsePvzDo([{ skill: 'collect', what: 'usable_seed', plant: 'unknown' }])).toHaveProperty('error');
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;

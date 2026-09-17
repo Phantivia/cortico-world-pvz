@@ -151,6 +151,7 @@ const PVZ_STEP_SCHEMA = {
           type: 'string', enum: ['once', 'visible_clear'],
           description: 'visible_clear 持续收集当前可见类别；usable_seed 只允许 once，拿起后用 special action:launch 放置。可单独拾取后再选落点，或紧跟一个队尾 launch。',
         },
+        plant: { type: 'string', description: '仅 usable_seed 可用：指定要拾取的植物名称。省略则拾取任意一包；指定植物当前不可见时不拾取其他种类。' },
       },
       required: ['skill', 'what'],
       additionalProperties: false,

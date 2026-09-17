@@ -297,6 +297,7 @@ function uniqueCardSlot(matches: PvzSemanticCard[], selector: unknown): number {
 export function selectCollectibleIds(
   state: PvzSemanticState,
   what: PvzCollectibleSelection,
+  plant?: string,
 ): number[] {
   const board = boardOf(state);
   if (!['coins', 'resources', 'award', 'usable_seed'].includes(what)) {
@@ -306,7 +307,8 @@ export function selectCollectibleIds(
     if (isSunCollectible(item.kind)) return false;
     if (what === 'coins') return COIN_KINDS.has(item.kind);
     if (what === 'award') return isTerminalCollectible(item.kind);
-    if (what === 'usable_seed') return item.kind === 'usable_seed';
+    if (what === 'usable_seed') return item.kind === 'usable_seed'
+      && (plant === undefined || item.containedType === plantTypeOf(plant));
     return item.kind !== 'usable_seed';
   });
   return selected

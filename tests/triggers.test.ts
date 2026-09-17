@@ -40,6 +40,37 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('只在指定植物种子出现时拾取该包，保留其他种子', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState() }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'collect') return;
+      const picked = fake.state.board!.collectibles.find(item => action.ids.includes(item.id))!;
+      fake.nativeResult = { outcome: 'executed', effect: 'collectibles_collected' };
+      fake.publish(draft => {
+        draft.board!.collectibles = draft.board!.collectibles.filter(item => !action.ids.includes(item.id));
+        draft.board!.cursor = { kind: 'usable_seed', heldType: picked.containedType!, logicalX: 300, logicalY: 200 };
+      });
+    };
+    const { world } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_arm', {
+        when: { collectible: { kind: 'usable_seed', plant: 'peashooter' } },
+        steps: [{ skill: 'collect', what: 'usable_seed', plant: 'peashooter' }],
+      })).toContain('已武装');
+      transport.publish(draft => { draft.board!.collectibles = [
+        { id: 1, kind: 'usable_seed', containedType: 16, x: 200, y: 200, row: 2, column: 3 },
+      ]; });
+      await afterTimers(40);
+      expect(transport.state.board!.cursor.kind).toBe('normal');
+      transport.publish(draft => { draft.board!.collectibles.push(
+        { id: 2, kind: 'usable_seed', containedType: 0, x: 300, y: 200, row: 2, column: 4 },
+      ); });
+      await afterTimers(150);
+      expect(transport.state.board!.cursor.heldType).toBe(0);
+      expect(transport.state.board!.collectibles.map(item => item.containedType)).toEqual([16]);
+    } finally { await world.stop(); }
+  });
+
   it('种子包出现后触发一次拾取并保持手持，后续新包不会重复触发', async () => {
     const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState() }));
     transport.actionHandler = (action, fake) => {

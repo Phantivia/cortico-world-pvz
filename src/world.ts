@@ -948,6 +948,7 @@ export class PvzWorld implements World {
     step: Extract<PvzDoStep, { skill: 'collect' }>,
     context: PvzExecutionContext,
   ): Promise<PvzStepResult> {
+    const label = collectibleLabel(step.what) + (step.plant ? `（${pvzSeedSelectorDisplayName(step.plant)}）` : '');
     let collected = 0;
     let verifiedPasses = 0;
     let transientRescans = 0;
@@ -960,7 +961,7 @@ export class PvzWorld implements World {
           ? { outcome: 'done', text: `已收集 ${collected} 个目标，界面随后推进` }
           : { outcome: 'blocked', text: '当前没有可收集的棋盘' };
       }
-      const selected = selectCollectibleIds(board, step.what);
+      const selected = selectCollectibleIds(board, step.what, step.plant);
       const byId = new Map(board.collectibles.map((item) => [item.id, item]));
       const ordinary = selected.filter((id) => !isTerminalCollectible(byId.get(id)!.kind));
       const terminal = selected.filter((id) => isTerminalCollectible(byId.get(id)!.kind));
@@ -972,7 +973,7 @@ export class PvzWorld implements World {
       if (!ids.length) {
         return {
           outcome: collected > 0 ? 'done' : 'noop',
-          text: collected > 0 ? `已收集 ${collected} 个${collectibleLabel(step.what)}` : `当前没有可见${collectibleLabel(step.what)}`,
+          text: collected > 0 ? `已收集 ${collected} 个${label}` : `当前没有可见${label}`,
         };
       }
       const timeoutMs = pvzCollectExecutionBudgetMs(
@@ -983,7 +984,7 @@ export class PvzWorld implements World {
       const receipt = await this.requireRuntime().act({ kind: 'collect', ids }, timeoutMs);
       const result = this.semanticReceipt(
         receipt,
-        `已收集 ${ids.length} 个${collectibleLabel(step.what)}`,
+        `已收集 ${ids.length} 个${label}`,
       );
       if (result.outcome !== 'done') {
         const terminalBatch = ids.some((id) => isTerminalCollectible(byId.get(id)!.kind));
@@ -1024,17 +1025,17 @@ export class PvzWorld implements World {
       if (verified < ids.length) {
         return {
           outcome: 'partial',
-          text: `已确认收集 ${collected} 个${collectibleLabel(step.what)}；本批确认 ${verified}/${ids.length} 个`
+          text: `已确认收集 ${collected} 个${label}；本批确认 ${verified}/${ids.length} 个`
             + `${batch && batch.stale > 0 ? `，${batch.stale} 个在点击前已消失` : ''}`,
         };
       }
       if (step.until === 'once' || step.what === 'usable_seed') {
-        return { outcome: 'done', text: `已收集 ${collected} 个${collectibleLabel(step.what)}` };
+        return { outcome: 'done', text: `已收集 ${collected} 个${label}` };
       }
     }
     return {
       outcome: 'partial',
-      text: `连续收集 ${collected} 个${collectibleLabel(step.what)}后仍有新目标出现`,
+      text: `连续收集 ${collected} 个${label}后仍有新目标出现`,
     };
   }
 

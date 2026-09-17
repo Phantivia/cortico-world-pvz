@@ -71,6 +71,18 @@ describe('PvZ condition parsing', () => {
     expect(parsePvzCondition({ collectible: { kind: 'usable_seed', minCount: 1.5 } })).toHaveProperty('error');
   });
 
+  it('可用种子条件按植物名称筛选，拒绝给普通资源指定植物', () => {
+    const condition = parse({ collectible: { kind: 'usable_seed', plant: '荷叶' } });
+    const state = snapshot({ screen: 'board', board: boardState({ collectibles: [
+      { id: 1, kind: 'usable_seed', containedType: 0, x: 100, y: 100, row: 1, column: 1 },
+    ] }) });
+    expect(evaluatePvzCondition(condition, state)).toBe(false);
+    state.board!.collectibles[0]!.containedType = 16;
+    expect(evaluatePvzCondition(condition, state)).toBe(true);
+    expect(parsePvzCondition({ collectible: { kind: 'silver_coin', plant: '荷叶' } })).toHaveProperty('error');
+    expect(parsePvzCondition({ collectible: { kind: 'usable_seed', plant: 'unknown' } })).toHaveProperty('error');
+  });
+
   it('canonicalizes plant names throughout nested composition without retaining input objects', () => {
     const raw = { all: [
       { card: { plant: ' WALL-NUT ', ready: false } },

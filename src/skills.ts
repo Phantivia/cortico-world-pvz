@@ -60,6 +60,7 @@ export type PvzDoStep =
       skill: 'collect';
       what: 'coins' | 'resources' | 'award' | 'usable_seed';
       until: 'once' | 'visible_clear';
+      plant?: PvzPlantName;
     }
   /** World 自排的收阳光工作。解析器不认这个 skill，只有 worlds-pvz 自己能产出它。 */
   | { skill: 'auto_sun' }
@@ -114,7 +115,7 @@ function describeAction(step: PvzDoStep): string {
     case 'choose_seeds': return `选卡 ${step.seeds.map(pvzSeedSelectorDisplayName).join('、')}${step.confirm ? '并确认' : ''}`;
     case 'plant': return `把 ${pvzSeedSelectorDisplayName(step.plant)} 种在${describePvzPlantPosition(step.row, step.column)}`;
     case 'shovel': return `铲除${cellText(step.row, step.column)}`;
-    case 'collect': return `收集${collectName(step.what)}${step.until === 'visible_clear' ? '直到当前可见目标清空' : '一次'}`;
+    case 'collect': return `收集${collectName(step.what)}${step.plant ? `（${pvzSeedSelectorDisplayName(step.plant)}）` : ''}${step.until === 'visible_clear' ? '直到当前可见目标清空' : '一次'}`;
     case 'auto_sun': return '自动收取场上阳光';
     case 'special': {
       if (step.action === 'whack' && step.targets) {
@@ -282,7 +283,7 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
 }
 
 function parseCollect(value: Record<string, unknown>, index: number): { step: PvzDoStep } | { error: string } {
-  const invalid = keys(value, ['skill', 'what', 'until']);
+  const invalid = keys(value, ['skill', 'what', 'until', 'plant']);
   if (invalid) return badField(index, invalid);
   const allowedWhat = ['coins', 'resources', 'award', 'usable_seed'] as const;
   const what = value.what;
@@ -299,11 +300,16 @@ function parseCollect(value: Record<string, unknown>, index: number): { step: Pv
   if (what === 'usable_seed' && until === 'visible_clear') {
     return { error: `第 ${index} 步 usable_seed 只允许 until=once；捡起后必须先放置或取消` };
   }
+  const plant = value.plant === undefined ? undefined : plantName(value.plant);
+  if (value.plant !== undefined && (what !== 'usable_seed' || !plant)) {
+    return { error: `第 ${index} 步 plant 只用于 usable_seed，必须是植物名称` };
+  }
   return {
     step: {
       skill: 'collect',
       what: what as Extract<PvzDoStep, { skill: 'collect' }>['what'],
       until,
+      ...(plant ? { plant } : {}),
     },
   };
 }

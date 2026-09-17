@@ -157,6 +157,7 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 - Slot Machine, Raining Seeds, and Vasebreaker pick up one usable packet at a time, place the held packet, then collect another.
 - Text and compact snapshots name the current minigame and held object. Usable-seed pickup and release emit cursor changes; legal placement cells remain in the special targets, so placement does not require interpreting an image.
 - `pvz_arm` can use `collectible: { kind: "usable_seed" }` to queue one pickup when a visible packet appears. The trigger fires once; the held packet remains available for a later `launch` decision. Collectible conditions also support `minCount` and preserve unknown visibility under darkness or fog.
+- Seed pickup and collectible conditions accept `plant` to select a particular plant's packet. A missing match leaves other packet types untouched; omitting `plant` keeps the any-packet behavior.
 - Vasebreaker never transmits opaque vase contents.
 - Every special-level action ends its skill queue. One vase, roll, gem move, zombie placement, aquarium purchase, onslaught transition, garden action, or cannon shot is observed before another is planned.
 - Beghouled waits for the board to settle after a swap or twist before comparing the matrix and score.
