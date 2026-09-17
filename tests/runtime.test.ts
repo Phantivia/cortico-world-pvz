@@ -11,6 +11,22 @@ import { PVZ_NATIVE_TERMINAL_RESULT_BUDGET_MS } from '../src/timing.ts';
 
 const runtimes: PvzRuntime[] = [];
 
+it.each([true, false])('选卡动画落定后才确认选择变化（原先选中=%s）', (selected) => {
+  const before = snapshot({ screen: 'seed_picker', seedPicker: {
+    capacity: 6, selected: selected ? [29] : [], ready: false, previewZombies: [],
+    choices: [{ id: 29, name: 'starfruit', state: selected ? 'selected' : 'chooser',
+      bankSlot: selected ? 0 : null, imitates: null, recommended: true, fixed: false, x: 100, y: 150 }],
+  } });
+  const after = structuredClone(before);
+  after.revision++;
+  after.seedPicker!.selected = selected ? [] : [29];
+  after.seedPicker!.choices[0]!.state = 'moving';
+  expect(verifyAction({ kind: 'choose_seed', seed: 29 }, before, after)).toBeNull();
+  after.revision++;
+  after.seedPicker!.choices[0]!.state = selected ? 'chooser' : 'selected';
+  expect(verifyAction({ kind: 'choose_seed', seed: 29 }, before, after)).not.toBeNull();
+});
+
 afterEach(async () => {
   await Promise.all(runtimes.splice(0).map((runtime) => runtime.stop()));
   vi.useRealTimers();

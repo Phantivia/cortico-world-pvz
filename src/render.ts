@@ -178,7 +178,7 @@ function zombiePhaseLabel(phase: string | undefined): string {
 
 function backgroundName(background: number): string {
   return [
-    '白天', '夜晚', '泳池', '浓雾', '屋顶', '僵王', '蘑菇园', '温室',
+    '白天', '夜晚', '泳池', '夜间泳池', '屋顶', '僵王', '蘑菇园', '温室',
     '僵尸水族馆', '智慧树',
   ][background] ?? '未知';
 }
@@ -528,7 +528,8 @@ function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string
       ? `割草机 ${renderMowers(board)}`
       : '割草机 黑暗中不可见',
   ];
-  if (board.fog.active) lines.push('雾中未知格允许盲放，动态占用未知');
+  if (board.fog.visibilityRule === 'invisighoul') lines.push('僵尸隐形，数量与位置未知');
+  else if (board.fog.active) lines.push('雾中未知格允许盲放，动态占用未知');
   if (!entitiesVisible) lines.push('黑暗阶段只允许盲放卡片');
   if (board.allowedSpecialActions.length) {
     lines.push(`特殊动作 ${board.allowedSpecialActions.map(specialActionDisplayName).join('、')}`);
@@ -675,7 +676,9 @@ function semanticBoard(snapshot: PvzSnapshot, board: PvzBoardState): Record<stri
     僵尸: visible ? sortedByCell(board.zombies).map(zombieDescription) : '黑暗中不可见',
     收集物: visible ? renderCollectibleCounts(board) : '黑暗中不可见',
     割草机: visible ? renderMowers(board) : '黑暗中不可见',
-    ...(board.fog.active ? { 雾: '未知格允许盲放' } : {}),
+    ...(board.fog.visibilityRule === 'invisighoul'
+      ? { 可见性: '僵尸隐形，数量与位置未知' }
+      : board.fog.active ? { 雾: '未知格允许盲放' } : {}),
     ...(board.special ? { 特殊: compactSpecial(board) } : {}),
   };
 }

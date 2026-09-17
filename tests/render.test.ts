@@ -8,6 +8,17 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('隐形食脑者说明僵尸不可见，不将夜间泳池描述为雾区', () => {
+  const state = snapshot({ screen: 'board', mode: 21, modeName: 'invisighoul', modeKind: 'minigame',
+    board: boardState({ background: 3, fog: { active: true, visibilityRule: 'invisighoul' } }),
+  });
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('夜间泳池');
+    expect(rendered).toContain('僵尸隐形，数量与位置未知');
+    expect(rendered).not.toContain('雾');
+  }
+});
+
 it('公开手持种子名称与合法落点，放置后不保留旧的手持信息', () => {
   const state = snapshot({ screen: 'board', mode: 19, modeName: 'its_raining_seeds', modeKind: 'minigame', board: boardState({
     cursor: { kind: 'usable_seed', heldType: 16, logicalX: 320, logicalY: 130 },
@@ -272,7 +283,7 @@ describe('PvZ 公开语义快照', () => {
     });
 
     const summary = renderSnapshot(state);
-    expect(summary).toContain('关卡 1 · 冒险 · 浓雾 · 进行中');
+    expect(summary).toContain('关卡 1 · 冒险 · 夜间泳池 · 进行中');
     // 坐标朝向由 ENV_PROMPT 说一次,不按快照份数重复
     expect(summary).not.toContain('僵尸朝列号更小的方向走');
     expect(summary).toContain('豌豆射手[100阳光/可用]');
@@ -299,7 +310,7 @@ describe('PvZ 公开语义快照', () => {
     expect(compact).not.toHaveProperty('最近结算');
     expect(compact).toMatchObject({
       棋盘状态: {
-        场景: '浓雾',
+        场景: '夜间泳池',
         方向: '第1列靠着房子，第9列出怪，僵尸朝列号更小的方向走',
         卡片: [
           '豌豆射手[100阳光/可用]',
@@ -376,7 +387,7 @@ describe('PvZ 公开语义快照', () => {
 
     const tactical = renderTacticalSnapshot(state);
     expect(tactical).toContain('[PvZ 状态 r812] 画面=棋盘 模式=冒险');
-    expect(tactical).toContain('关卡 17 · 冒险 · 浓雾 · 暂停');
+    expect(tactical).toContain('关卡 17 · 冒险 · 夜间泳池 · 暂停');
     expect(tactical).toContain('阳光 75 · 0/1 面旗');
     expect(tactical).toContain('卡片 大喷菇[75阳光/可用]');
     expect(tactical).toContain('第1排 1豌豆射手 2空');
@@ -520,7 +531,7 @@ describe('PvZ 公开语义快照', () => {
 
     const full = renderSnapshot(state, 'full');
     expect(full).toContain('模式=种星星');
-    expect(full).toContain('关卡 1 · 种星星 · 浓雾');
+    expect(full).toContain('关卡 1 · 种星星 · 夜间泳池');
     expect(full).toContain('wall_nut_bowling(已完成)');
     expect(full).toContain('对话框: confirm[Resume], cancel[Main Menu]');
     expect(full).toContain('特殊目标 出售植物·杨桃在第2排第3列');

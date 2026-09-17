@@ -847,8 +847,9 @@ export function verifyAction(
   if (action.kind === 'choose_seed') {
     const had = before.seedPicker?.selected.includes(action.seed) ?? false;
     const has = after.seedPicker?.selected.includes(action.seed) ?? false;
+    const choice = after.seedPicker?.choices.find((item) => item.id === action.seed);
+    if (choice?.state !== (has ? 'selected' : 'chooser')) return null;
     if (!had && has && action.imitates !== undefined) {
-      const choice = after.seedPicker?.choices.find((item) => item.id === action.seed);
       if (choice?.imitates !== action.imitates) return null;
     }
     return had !== has ? [`选卡状态已变化: ${action.seed} ${had ? '已移除' : '已选择'}`] : null;

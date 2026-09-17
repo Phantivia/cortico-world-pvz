@@ -150,6 +150,8 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 
 ## Special-level contracts
 
+- Seed selection and removal settle only after the packet's travel animation ends, so replacement can immediately reselect a removed packet.
+- Invisighoul reports invisible zombie counts and positions as unknown. Its night pool background is separate from a rendered fog mask.
 - Wall-nut Bowling uses conveyor packets and lane launch coordinates; it does not pretend a nut was planted on a grid cell.
 - Slot Machine waits for the roll state to leave its settled value and return before verification. Reel symbols are omitted from plantable cards; usable seeds are collected from the resulting drops.
 - Raining Seeds interacts with the visible usable-packet coin at its real position.
