@@ -724,6 +724,14 @@ function menuTargetWithdrawn(target: string, before: PvzSnapshot, after: PvzSnap
 }
 
 function verifyMenuTarget(target: string, before: PvzSnapshot, after: PvzSnapshot): string[] | null {
+  if ((target === 'restart' || target === 'main_menu')
+    && before.menu.some((item) => item.id === target && item.enabled)
+    && after.dialog?.hasPrimary && after.dialog.primaryLabel === target
+    && after.dialog.hasSecondary && after.dialog.secondaryLabel === 'cancel'
+    && after.dialog.id !== before.dialog?.id
+    && after.menu.some((item) => item.id === target && item.enabled)) {
+    return [`${target} 已打开确认对话，等待确认`];
+  }
   if (target.startsWith('profile:')) {
     const offered = before.menu.find((item) => item.id === target && item.enabled);
     const selected = after.menu.find((item) => item.id === target && item.enabled && item.state === 'selected');

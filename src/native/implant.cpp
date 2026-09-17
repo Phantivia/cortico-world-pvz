@@ -4443,11 +4443,22 @@ bool AppendSeedPicker(std::string& output, uintptr_t lawnApp, int expectedMode,
     return true;
 }
 
-// 铲子按钮的落点,从真机帧量出来:解一张 800x600 的棋盘截图,取铲子铁头那片灰色像素的
-// 质心,该点本身就是铲子图案。同一帧上七张卡的卡槽右端在 448。
-// 卡槽随卡位数变宽,铲子牌是否跟着右移还没有实测;拿不到铲子时连卡槽矩形一起报出来。
-constexpr int kShovelButtonX = 537;
-constexpr int kShovelButtonY = 53;
+// GOTY GetShovelButtonRect (0x410000) follows packet count; Slot Machine and
+// Squirrel place its 70x72 rectangle at x=600 independently of the seed bank.
+bool ReadShovelButtonPoint(uintptr_t board, int mode, int& x, int& y) {
+    uintptr_t bank = 0;
+    int count = 0;
+    uint8_t visible = 0;
+    if (!SafeRead(board + pvz::board::showShovel, visible) || visible != 1 ||
+        !SafeRead(board + pvz::board::seedBank, bank) || !bank ||
+        !SafeRead(bank + pvz::seedBank::packetCount, count) || count < 0 || count > 10) {
+        return false;
+    }
+    const int extra = count <= 6 ? 0 : count == 7 ? 60 : count == 8 ? 76 : count == 9 ? 112 : 153;
+    x = (mode == 18 || mode == 49 ? 600 : 456 + extra) + 35;
+    y = 36;
+    return true;
+}
 
 /** 卡槽控件的实测矩形,只用于失败时把数报出来。卡包与卡槽同一套布局:0x08/0x0C 左上角,0x10/0x14 宽高。 */
 struct SeedBankRect {
@@ -8397,9 +8408,15 @@ bool ExecuteAction(const Command& command, std::string& reason, bool apply,
         int x = 0;
         int y = 0;
         CellCenter(board, background, command.row - 1, command.column - 1, x, y);
+        int shovelX = 0;
+        int shovelY = 0;
+        if (semanticBoard.cursorType == 0 && !ReadShovelButtonPoint(board, mode, shovelX, shovelY)) {
+            reason = "shovel button is not visible or its layout is unavailable";
+            return false;
+        }
         if (!apply) return true;
         if (semanticBoard.cursorType == 0) {
-            if (!Click(window, kShovelButtonX, kShovelButtonY, command.epoch)) {
+            if (!Click(window, shovelX, shovelY, command.epoch)) {
                 reason = "failed to post shovel selection input";
                 return false;
             }
@@ -8435,9 +8452,9 @@ bool ExecuteAction(const Command& command, std::string& reason, bool apply,
             if (!selected) {
                 const SeedBankRect bank = ReadSeedBankRect(board);
                 std::string measured = "点了铲子，光标没变成铲子；点的是 (";
-                AppendInt(measured, kShovelButtonX);
+                AppendInt(measured, shovelX);
                 measured += ",";
-                AppendInt(measured, kShovelButtonY);
+                AppendInt(measured, shovelY);
                 measured += ")，这段时间光标一直是 ";
                 measured += CursorName(lastCursorType);
                 if (bank.read) {

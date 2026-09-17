@@ -281,6 +281,7 @@ constexpr size_t mainCounter = 0x5580;
 constexpr size_t tutorialState = 0x559C;
 constexpr size_t currentWave = 0x5594;
 constexpr size_t levelComplete = 0x5614;
+constexpr size_t showShovel = 0x5609;
 constexpr size_t levelAwardSpawned = 0x5624;
 constexpr size_t progressMeterWidth = 0x5628;
 constexpr size_t cobCannonCursorDelay = 0x576C;

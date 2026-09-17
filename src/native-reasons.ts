@@ -129,6 +129,7 @@ const FAILED: Record<string, string> = {
   // 铲子
   'shovel cell is invalid': '铲子的目标格不合法',
   'shovel target state is unavailable': '读不到铲子目标格的状态',
+  'shovel button is not visible or its layout is unavailable': '铲子按钮不可见或读不到它的位置',
   'shovel is blocked while another cursor tool is held': '光标上还拿着别的工具，铲不了',
   'shovel selection is blocked by another cursor tool': '光标上还拿着别的工具，拿不了铲子',
   'no visible plant exists at the requested cell': '这一格上没有看得见的植物',

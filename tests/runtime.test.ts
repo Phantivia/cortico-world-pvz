@@ -1123,7 +1123,29 @@ describe('PvZ 目标专属验真', () => {
     }))).toBeNull();
   });
 
-  it('defeat 与暂停菜单的 restart 只接受新的关卡运行', () => {
+  it.each(['restart', 'main_menu'] as const)('%s 打开对应确认框后保留确认步骤', (target) => {
+    const before = snapshot({
+      screen: 'dialog',
+      menu: [{ id: target, label: target, enabled: true, x: 400, y: 400, state: null, record: null }],
+      dialog: null,
+      board: boardState({ paused: true }),
+    });
+    const confirmation = nextSnapshot(before, (draft) => {
+      draft.dialog = {
+        id: 42, hasPrimary: true, hasSecondary: true,
+        primaryLabel: target, secondaryLabel: 'cancel',
+      };
+    });
+    const action = { kind: 'menu', target } as const;
+    expect(verifyAction(action, before, confirmation))
+      .toEqual([`${target} 已打开确认对话，等待确认`]);
+    expect(verifyAction(action, confirmation, nextSnapshot(confirmation, () => {}))).toBeNull();
+    expect(verifyAction(action, before, nextSnapshot(confirmation, (draft) => {
+      draft.dialog!.primaryLabel = 'confirm';
+    }))).toBeNull();
+  });
+
+  it('restart 结束确认步骤要求新的关卡运行', () => {
     const before = snapshot({
       screen: 'defeat',
       menu: [{ id: 'restart', label: 'Restart', enabled: true, x: 400, y: 400, state: null, record: null }],
