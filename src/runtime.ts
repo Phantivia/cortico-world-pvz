@@ -779,8 +779,12 @@ function verifyMenuTarget(target: string, before: PvzSnapshot, after: PvzSnapsho
   }
   if (target === 'restart') {
     const offered = before.menu.some((item) => item.id === target && item.enabled);
-    const newRun = before.board && after.board && before.board.runId !== after.board.runId;
-    return offered && (after.screen === 'loading' || after.screen === 'seed_picker'
+    const priorRunId = before.board?.runId
+      ?? (before.lastRun?.mode === before.mode ? before.lastRun.runId : undefined);
+    const newRun = after.screen === 'board' && after.board && !after.board.paused
+      && (priorRunId !== undefined ? priorRunId !== after.board.runId
+        : before.screen === 'defeat' || before.screen === 'dialog');
+    return offered && before.mode === after.mode && (after.screen === 'loading' || after.screen === 'seed_picker'
       || newRun)
       ? ['当前关卡已重新载入']
       : null;

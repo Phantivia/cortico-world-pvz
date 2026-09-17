@@ -507,20 +507,6 @@ export class PvzWorld implements World {
       const whackSteps = parsed.steps.filter(isWhackStep);
       const liveWhackBoard = board !== null && this.latest !== null && isWhackSnapshot(this.latest);
       let whackAdmission: { scope: WhackQueueScope; continuation: boolean } | null = null;
-      if (liveWhackBoard) {
-        const menuTransition = parsed.steps.length === 1
-          && parsed.steps[0]?.skill === 'menu';
-        if (menuTransition && this.hasWhackPipeline()) {
-          throw new Error('实时锤击技能队列仍在执行或预取中，不能插入菜单操作');
-        }
-        const window = this.whackPrefetchWindow;
-        if (whackSteps.length === 0 && window && this.bufferedWhackQueueTaskId === null) {
-          throw new Error(
-            `[PvZ·锤击预取] 当前锤击任务#${window.sourceTaskId}的后继缓冲位为空；`
-            + `先按预取提示用 queue:"append" 提交后继锤击队列`,
-          );
-        }
-      }
       this.requireConveyorCardBudget(board, parsed.steps);
       if (whackSteps.length > 0) {
         if (!liveWhackBoard || !board || !this.latest) {
@@ -649,27 +635,14 @@ export class PvzWorld implements World {
         const stopped = await this.executor.cancelAndWait(taskId);
         return `${stopped}\n${this.renderQueueStatus()}`;
       }
-      if (context.role !== 'system'
-        && (this.hasWhackPipeline()
-          || (this.latest !== null && isWhackSnapshot(this.latest)))) {
-        const outstanding = this.activeWhackQueueTaskId ?? this.bufferedWhackQueueTaskId;
-        const task = outstanding === null
-          ? '当前实时锤击棋盘'
-          : `锤击任务#${outstanding}`;
-        throw new Error(
-          `${task}由逐响应有限 skill 队列驱动；等待任务、预取或 pvz.target.ready，不能用 pvz_stop 催促、替换或空转`,
-        );
-      }
       const disarmed = this.triggers.clear();
       const stopped = await this.executor.stopAndWait('收到 pvz_stop')
         ?? (disarmed.length ? `撤掉了触发器 ${disarmed.map((id) => `#${id}`).join('、')}` : null);
-      if (context.role === 'system') {
-        const window = this.whackPrefetchWindow;
-        if (window) this.clearWhackPrefetchWindow(window);
-        const host = this.host;
-        if (host && this.latest && renderWhackTargetReady(this.latest) !== null
-          && !this.hasWhackPipeline()) this.queueWhackTarget(host);
-      }
+      const window = this.whackPrefetchWindow;
+      if (window) this.clearWhackPrefetchWindow(window);
+      const host = this.host;
+      if (host && this.latest && renderWhackTargetReady(this.latest) !== null
+        && !this.hasWhackPipeline()) this.queueWhackTarget(host);
       return `${stopped ?? '当前没有排队任务；原生输入已释放'}\n${this.renderQueueStatus()}`;
     }
     throw new Error(`未知工具 ${name}`);

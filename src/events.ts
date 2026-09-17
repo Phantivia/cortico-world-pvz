@@ -620,7 +620,7 @@ export function renderWhackPrefetchCue(
     : `锤击任务#${sourceTaskId}已经结束，它的后继缓冲位仍为空`;
   return `[当前战术快照]\n${renderTacticalSnapshot(snapshot)}\n`
     + `[PvZ·锤击预取] ${renderWhackProgress(snapshot)}；${state}。`
-    + `提交 \`${renderWhackSkillQueueCall('append')}\`。`;
+    + `可用 \`${renderWhackSkillQueueCall('append')}\` 续接；支援、暂停或停止仍可单独操作。`;
 }
 
 export function renderWhackTaskState(snapshot: PvzSnapshot): string | null {

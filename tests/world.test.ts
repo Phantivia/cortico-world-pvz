@@ -2155,7 +2155,7 @@ describe('PvzWorld 特殊关卡', () => {
     }
   });
 
-  it('Whack 预取先缓冲后继锤击，再把支援排在两份锤击之后', async () => {
+  it('Whack 预取允许先安排支援，再自主追加后继锤击', async () => {
     const board = whackBoard([{ id: 42, row: 3, column: 6 }]);
     board.collectibles = [
       { id: 92, kind: 'gold_coin', x: 360, y: 190, row: 2, column: 4 },
@@ -2204,26 +2204,53 @@ describe('PvzWorld 特殊关卡', () => {
         queue: 'append',
         steps: [{ skill: 'collect', what: 'coins', until: 'once' }],
       });
-      expect(earlySupport).toContain('[pvz_do 失败]');
-      expect(earlySupport).toContain('当前锤击任务#1的后继缓冲位为空');
+      expect(earlySupport).toContain('任务#2 已受理');
 
       const prefetchedFollowup = await callTool(world, 'pvz_do', {
         queue: 'append',
         steps: whackQueueSteps(),
       });
-      expect(prefetchedFollowup).toContain('任务#2 已受理');
-
-      const support = await callTool(world, 'pvz_do', {
-        queue: 'append',
-        steps: [{ skill: 'collect', what: 'coins', until: 'once' }],
-      });
-      expect(support).toContain('任务#3 已受理');
+      expect(prefetchedFollowup).toContain('任务#3 已受理');
       await waitUntil(() => host.events.some(({ event }) => event.senderKey === 'pvz.task.3'));
 
-      expect(transport.commands.slice(0, WHACK_SKILL_QUEUE_LENGTH * 2).every((action) =>
+      expect(transport.commands.slice(0, WHACK_SKILL_QUEUE_LENGTH).every((action) =>
         action.kind === 'special' && action.action === 'whack')).toBe(true);
       expect(transport.commands.map((action) => action.kind)).not.toContain('cancel');
-      expect(transport.commands.at(-1)?.kind).toBe('collect');
+      expect(transport.commands[WHACK_SKILL_QUEUE_LENGTH]?.kind).toBe('collect');
+      expect(transport.commands.slice(WHACK_SKILL_QUEUE_LENGTH + 1).every((action) =>
+        action.kind === 'special' && action.action === 'whack')).toBe(true);
+    } finally {
+      await world.stop();
+    }
+  });
+
+  it('暂停可以抢占仍在执行和预取的 Whack 队列', async () => {
+    const transport = new FakePvzTransport(snapshot({
+      screen: 'board', mode: 30, modeName: 'whack_a_zombie', modeKind: 'minigame',
+      menu: [{ id: 'pause', label: 'Pause', enabled: true, x: 700, y: 30, state: null, record: null }],
+      board: whackBoard([{ id: 42, row: 3, column: 6 }]),
+    }));
+    installRollingWhackStateMachine(transport, 42);
+    const whackHandler = transport.actionHandler!;
+    transport.nativeResultDelayMs = 50;
+    transport.actionHandler = (action, fake) => {
+      if (action.kind === 'menu' && action.target === 'pause') {
+        fake.nativeResult = { outcome: 'executed' };
+        fake.publish(draft => { draft.board!.paused = true; });
+        return;
+      }
+      return whackHandler(action, fake);
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', { steps: whackQueueSteps() });
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task.prefetch'));
+      expect(await callTool(world, 'pvz_do', {
+        queue: 'now', steps: [{ skill: 'menu', action: 'pause' }],
+      })).toContain('已受理');
+      await waitUntil(() => transport.state.board!.paused);
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task' && event.text.includes('pause 已完成')));
+      expect(await callTool(world, 'pvz_queue')).toContain('当前没有执行中的任务');
     } finally {
       await world.stop();
     }
@@ -3139,7 +3166,7 @@ describe('PvzWorld 特殊关卡', () => {
     }
   });
 
-  it('系统停止能释放只剩预取窗口的队列并恢复当前目标', async () => {
+  it.each(['model', 'system'] as const)('%s 停止能释放只剩预取窗口的队列并恢复当前目标', async (role) => {
     const transport = new FakePvzTransport(snapshot({
       screen: 'board', mode: 30, modeName: 'whack_a_zombie', modeKind: 'minigame',
       menu: [], board: whackBoard([{ id: 900, row: 2, column: 4 }]),
@@ -3154,12 +3181,10 @@ describe('PvzWorld 特殊关卡', () => {
       await flushImmediateWhackPrefetchFallback();
       await waitUntil(() => host.events.some(({ event }) =>
         event.senderKey === 'pvz-whack-prefetch-fallback-1'));
-      expect(await callTool(world, 'pvz_stop'))
-        .toContain('不能用 pvz_stop 催促、替换或空转');
       const targetCount = host.deferred.filter((event) => event.type === 'pvz.target.ready').length;
 
       const stop = world.tools().find((candidate) => candidate.name === 'pvz_stop')!;
-      const result = await stop.handler({}, { role: 'system', log: host.log });
+      const result = await stop.handler({}, { role, log: host.log });
       expect(typeof result === 'string' ? result : result.text).toContain('当前没有排队任务');
       const targets = host.deferred.filter((event) => event.type === 'pvz.target.ready');
       expect(targets).toHaveLength(targetCount + 1);
@@ -3246,7 +3271,7 @@ describe('PvzWorld 特殊关卡', () => {
     }
   });
 
-  it('实时 Whack 中 agent 不能停止，系统通道可以取消整份技能队列', async () => {
+  it.each(['model', 'system'] as const)('实时 Whack 中 %s 可以取消整份技能队列', async (role) => {
     const transport = new FakePvzTransport(snapshot({
       screen: 'board', mode: 30, modeName: 'whack_a_zombie', modeKind: 'minigame',
       menu: [], board: whackBoard([{ id: 600, row: 2, column: 3 }]),
@@ -3275,16 +3300,13 @@ describe('PvzWorld 特殊关卡', () => {
     const { world, host } = await startWorld(transport);
     try {
       expect(await callTool(world, 'pvz_stop'))
-        .toContain('不能用 pvz_stop 催促、替换或空转');
+        .toContain('当前没有排队任务');
       expect(await callTool(world, 'pvz_do', { steps: whackQueueSteps() }))
         .toContain('任务#1 已受理');
       await waitUntil(() => transport.commands.some((action) => action.kind === 'special'));
 
-      expect(await callTool(world, 'pvz_stop'))
-        .toContain('不能用 pvz_stop 催促、替换或空转');
-
       const stop = world.tools().find((candidate) => candidate.name === 'pvz_stop')!;
-      const stopped = await stop.handler({}, { role: 'system', log: host.log });
+      const stopped = await stop.handler({}, { role, log: host.log });
       const text = typeof stopped === 'string' ? stopped : stopped.text;
       expect(text).toContain('已停止任务#1');
       expect(transport.commands.filter((action) => action.kind === 'cancel').length)

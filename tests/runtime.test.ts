@@ -11,6 +11,26 @@ import { PVZ_NATIVE_TERMINAL_RESULT_BUDGET_MS } from '../src/timing.ts';
 
 const runtimes: PvzRuntime[] = [];
 
+it.each([true, false])('失败界面没有棋盘时，重开由同模式活动棋盘确认（已记录结果=%s）', (hasResult) => {
+  const before = snapshot({ screen: 'defeat', mode: 30, board: null,
+    lastRun: hasResult ? { resultId: 1, runId: 4, mode: 30, level: 0, outcome: 'lost' } : null,
+    menu: [{ id: 'restart', label: 'Restart', enabled: true, x: 400, y: 300, state: null, record: null }],
+  });
+  const after = snapshot({ revision: before.revision + 1, screen: 'board', mode: 30, board: boardState({ runId: 5 }) });
+  const action = { kind: 'menu', target: 'restart' } as const;
+  expect(verifyAction(action, before, after)).toEqual(['当前关卡已重新载入']);
+  after.board!.paused = true;
+  expect(verifyAction(action, before, after)).toBeNull();
+  after.board!.paused = false;
+  after.mode = 31;
+  expect(verifyAction(action, before, after)).toBeNull();
+  if (hasResult) {
+    after.mode = 30;
+    after.board!.runId = 4;
+    expect(verifyAction(action, before, after)).toBeNull();
+  }
+});
+
 it('存档继续菜单没有棋盘时仍以同模式的活动棋盘验证恢复', () => {
   const before = snapshot({ screen: 'dialog', mode: 23, board: null,
     menu: [{ id: 'resume', label: 'Resume', enabled: true, x: 400, y: 300, state: null, record: null }],

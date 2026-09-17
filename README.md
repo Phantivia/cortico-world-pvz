@@ -120,7 +120,10 @@ The internal cursor is exclusive, so a sweep is armed only on a live, unpaused b
 - `pvz_queue`: inspect running, waiting, and parked tasks, armed triggers, and the most recent terminal result
 - `pvz_arm`: arm a trigger — a condition and the queue to submit the moment it holds
 - `pvz_stop`: withdraw one task or trigger, or clear everything and release all game-local held input
+
 - `pvz_glance`: capture a PNG frame for compatibility diagnosis; available only to image-capable models
+
+Whack prefetch cues leave support, menu transitions, and stopping available. Clearing all tasks also closes the prefetch window; continuing requires another finite queue from the model.
 
 The user-selection dialog exposes each visible profile as `profile:<exact name>`. Use a `menu` step with that action to select its row, followed by `menu` action `confirm` to activate it. Selection is shown as pending confirmation; completion requires the dialog to close and the chosen profile to become active. Native input revalidates the current list, row identity, selection, and button before clicking. Compatibility clicks remain restricted to unknown screens without semantic menus or dialogs.
 
