@@ -160,7 +160,9 @@ const PVZ_STEP_SCHEMA = {
       type: 'object',
       properties: {
         skill: { type: 'string', enum: ['special'] },
-        action: { type: 'string', maxLength: 128 },
+        action: { type: 'string', maxLength: 128,
+          description: '使用状态中的特殊动作名，接受中文或规范英文。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。',
+        },
         at: CELL_SCHEMA,
         to: CELL_SCHEMA,
         card: {

@@ -5446,7 +5446,16 @@ SpecialView BuildSpecial(const BoardView& board, int mode) {
     if ((mode == 20 || mode == 24) && special.settled) {
         const char* action = mode == 20 ? "swap" : "twist";
         for (const auto& plant : board.plants) {
-            if (mode == 24 && (plant.row + 1 >= board.rows || plant.column + 1 >= 9)) continue;
+            if (mode == 24) {
+                if (plant.row + 1 >= board.rows || plant.column >= 7) continue;
+                const auto hasPlant = [&](int row, int column) {
+                    return std::any_of(board.plants.begin(), board.plants.end(),
+                        [&](const PlantView& other) { return other.row == row && other.column == column; });
+                };
+                if (!hasPlant(plant.row, plant.column + 1) ||
+                    !hasPlant(plant.row + 1, plant.column) ||
+                    !hasPlant(plant.row + 1, plant.column + 1)) continue;
+            }
             add(action, "cell", -1, -1, plant.row + 1, plant.column + 1);
         }
         for (const auto& card : board.cards) {
