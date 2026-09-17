@@ -3334,7 +3334,7 @@ bool StableAppBoardTuple(uintptr_t lawnApp, int scene, int mode,
            SafeRead(board + pvz::board::level, currentLevel) &&
            SafeRead(board + pvz::board::mainCounter, currentCounter) &&
            currentScene == scene && currentMode == mode && currentBoard == board &&
-           currentLevel == level && currentCounter == mainCounter;
+           currentLevel == level && currentCounter >= mainCounter;
 }
 
 SemanticBoardGate ReadSemanticBoardGate(uintptr_t lawnApp, int scene, int mode,

@@ -152,6 +152,7 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 
 - Seed selection and removal settle only after the packet's travel animation ends, so replacement can immediately reselect a removed packet.
 - Resuming a saved minigame is verified when its menu advances to the same mode's active board, including menus that have no board snapshot yet.
+- Board identity remains valid while its frame counter advances during observation. A changed scene, mode, board pointer, level, or counter rollback still invalidates the read.
 - Invisighoul reports invisible zombie counts and positions as unknown. Its night pool background is separate from a rendered fog mask.
 - Zombiquarium reports the green hunger tint and recovery as events and text state. Swimming across the aquarium does not emit approaching-house threats.
 - Wall-nut Bowling uses conveyor packets and lane launch coordinates; it does not pretend a nut was planted on a grid cell.
