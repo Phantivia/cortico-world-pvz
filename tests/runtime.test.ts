@@ -792,6 +792,20 @@ describe('PvZ 动作验真', () => {
     expect(verifyAction({ kind: 'cancel' }, before, after)).toBeNull();
   });
 
+  it.each([0, 30])('暂停时特殊动作为空，模式 %s 的常驻锤子仍允许取消验真', (mode) => {
+    const before = snapshot({ screen: 'dialog', mode,
+      board: boardState({ level: mode === 0 ? 15 : 0, paused: true, allowedSpecialActions: [],
+        cursor: { kind: 'hammer', heldType: null, logicalX: 400, logicalY: 300 },
+      }),
+    });
+    const after = structuredClone(before);
+    after.revision++;
+    after.inputControl.epoch++;
+    expect(verifyAction({ kind: 'cancel' }, before, after)).not.toBeNull();
+    after.inputControl.queueDepth = 1;
+    expect(verifyAction({ kind: 'cancel' }, before, after)).toBeNull();
+  });
+
   it('丢弃低 revision 与重复 revision，只发布单调前进的状态', async () => {
     const initial = snapshot({
       revision: 5,

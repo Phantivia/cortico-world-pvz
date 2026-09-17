@@ -961,7 +961,8 @@ export function verifyAction(
   if (action.kind === 'cancel') {
     const cursor = after.board?.cursor.kind;
     const modeOwnedCursor = cursor === 'hammer'
-      && after.board?.allowedSpecialActions.includes('whack') === true;
+      && (after.board?.allowedSpecialActions.includes('whack') === true
+        || after.mode === 30 || after.mode === 0 && after.board?.level === 15);
     const cursorReleased = after.board === null || cursor === 'normal' || modeOwnedCursor;
     if (after.inputControl.epoch > before.inputControl.epoch
       && after.inputControl.queueDepth === 0

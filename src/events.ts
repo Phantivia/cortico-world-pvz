@@ -598,7 +598,7 @@ function currentWhackTargets(snapshot: PvzSnapshot): PvzSpecialTarget[] {
 
 function whackSupportCue(snapshot: PvzSnapshot): string {
   if (!isWhackSnapshot(snapshot)) return '';
-  return '\n[PvZ·支援机会] 先填充待处理的锤击预取；没有空预取位时以 queue:"append" 追加支援。';
+  return '\n[PvZ·支援机会] 支援可单独提交；queue:"append" 排在现有任务之后，queue:"now" 中断当前任务。';
 }
 
 export function renderWhackTargetReady(snapshot: PvzSnapshot): string | null {

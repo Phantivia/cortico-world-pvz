@@ -515,7 +515,7 @@ export class PvzWorld implements World {
         if (parsed.steps.length !== WHACK_SKILL_QUEUE_LENGTH
           || whackSteps.length !== WHACK_SKILL_QUEUE_LENGTH) {
           throw new Error(
-            `每次响应必须产出一份恰含 ${WHACK_SKILL_QUEUE_LENGTH} 个锤击步骤的有限队列`,
+            `锤击队列必须恰含 ${WHACK_SKILL_QUEUE_LENGTH} 个锤击步骤，支援或菜单另开队列`,
           );
         }
         const invalidIndex = parsed.steps.findIndex((step) => !isWhackAllVisibleStep(step));
