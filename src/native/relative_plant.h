@@ -118,7 +118,7 @@ struct RelativePlantScope {
 };
 
 bool RelativeHostileAlive(const ZombieView& zombie) {
-    return !zombie.hypnotized && zombie.health > 0 &&
+    return zombie.type != 25 && !zombie.hypnotized && zombie.health > 0 &&
            zombie.phase != 1 && zombie.phase != 2 && zombie.phase != 3;
 }
 
@@ -528,14 +528,23 @@ struct NativeRelativePlantInput {
     ULONGLONG now() { return GetTickCount64(); }
     bool delay(ULONGLONG epoch, DWORD ms) { return WaitForActionDelay(epoch, ms); }
     bool select(const RelativePlantScope& scope, const CardView& card, std::string& reason) {
-        return ClickValidated(window, card.x, card.y, scope.command.epoch, [&] {
+        const auto validate = [&] {
             BoardView board;
             PlantPlacement placement;
             int x = 0;
             int y = 0;
             return ValidateRelativePlant(scope, now(), RelativePlantStage::Selecting, board,
                                          placement, x, y, reason);
-        }, scope.deadline);
+        };
+        if (!HasConveyorSeedBank(scope.mode, scope.level)) {
+            return ClickValidated(window, card.x, card.y, scope.command.epoch, validate, scope.deadline);
+        }
+        BoardView board;
+        if (!ReadBoard(scope.lawnApp, scope.mode, board)) return false;
+        return SelectConveyorPacket(board, scope.mode, card, [&](int x, int y, auto&& current) {
+            return ClickValidated(window, x, y, scope.command.epoch,
+                [&] { return validate() && current(); }, scope.deadline);
+        });
     }
     bool move(const RelativePlantScope& scope, int x, int y) {
         return MoveInternalCursor(window, x, y, scope.command.epoch, false, 24.0, 0.0, scope.deadline) &&

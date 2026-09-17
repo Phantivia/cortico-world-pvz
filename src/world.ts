@@ -579,6 +579,7 @@ export class PvzWorld implements World {
               type: card.type,
               imitates: card.imitates,
               name: card.name,
+              conveyor: isConveyorBoard(board),
             },
           } as BoundConditionalPlantStep;
         }
@@ -723,7 +724,7 @@ export class PvzWorld implements World {
         return {
           outcome: 'blocked',
           // 受阻回执只报读数与结论,换什么手段是她的判断(worlds-report-facts)。
-          text: `${zombieDisplayNameOf(mineThreat.type, mineThreat.name)} 已经逼到${rowText(row)}且这排割草机已经用掉了，土豆雷来不及武装`,
+          text: `${zombieDisplayNameOf(mineThreat.type, mineThreat.name)} 已经逼到${rowText(row)}且这排没有可用割草机，土豆雷来不及武装`,
         };
       }
       let slot: number;

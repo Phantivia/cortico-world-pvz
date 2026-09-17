@@ -213,6 +213,14 @@ Vasebreaker, Beghouled swap, twist, upgrades, shuffle, and crater clearing,
 Whack-a-Zombie, Last Stand start, Wall-nut Bowling, ready Cob Cannon targeting,
 Zombiquarium snorkel/trophy purchases and brain placement, and I-Zombie card placement. Special
 targets are emitted only while their source entity or mechanism is currently safe to invoke.
+
+Zomboss is published as `board.boss`, outside ordinary row-bound zombies. Its phase and freeze
+state describe the visible boss; relative planting excludes it. A projectile is published only
+while the boss's reanimation ID resolves to a live, on-screen animation. The pinned layout uses
+Zombie offsets `0x140` for that ID, `0x14C` for its row, and `0x150` for fire versus ice. Animation
+position comes from the effect system's reanimation array; the ball centre is 75 pixels beyond
+its left origin. The next attack's preselected row and type are not disclosed before the animation
+exists. Native protocol readers accept an omitted `boss` from older bridges as unavailable.
 Adventure 4-5 reports visible vase count, and both Zomboss encounters report the same
 0–100 percent progress represented by the on-screen boss meter. Vasebreaker stage numbers follow
 the visible board resets, including Adventure 4-5. Seeing Stars counts Starfruit only on the 14
@@ -233,6 +241,10 @@ Zomboss's Revenge, have a null cost and are always affordable. Pogo Party and ot
 banks use the live mode-specific price and sun checks. Survival
 Endless adds 50 sun for every existing copy of the raw upgrade card type, matching the game's
 accelerated-pricing routine. An action requires both cooldown readiness and affordability.
+Conveyor packets outside the live seed-bank rectangle are omitted. A partly clipped packet's
+click point lies inside its visible intersection with that rectangle, preserving its native slot.
+Selection rechecks the packet after cursor travel and corrects a point it has moved away from
+before pressing; packet removal or identity changes end selection without a click.
 Collection re-reads every requested ID immediately before its click and accepts it only after the
 same raw Coin enters `mIsBeingCollected`; an ordinary disappearance never satisfies the action.
 For the last requested ID, a board transition can replace that observation only when `lastRun`

@@ -59,6 +59,8 @@ export interface PvzPlantAdmissionBinding {
   type: number;
   imitates: number | null;
   name: string;
+  /** Conveyor inventory is reserved by type and count; its array slots compact after use. */
+  conveyor?: boolean;
 }
 
 export interface PvzExecutorOptions {
@@ -155,6 +157,7 @@ type TaskReservation = PlantReservation;
 interface PlantBinding extends PvzReservedCard {
   stepIndex: number;
   name: string;
+  conveyor?: boolean;
 }
 
 type AdmissionBoundPlantStep = Extract<PvzDoStep, { skill: 'plant' }> & {
@@ -667,7 +670,10 @@ export class PvzExecutor {
       if (board.runId !== bound.runId) {
         return { kind: 'blocked', text: '条件种植绑定已过期:关卡运行已变化' };
       }
-      card = board.cards.find((candidate) => candidate.slot === bound.slot);
+      card = bound.conveyor
+        ? board.cards.find((candidate) => sameCardType(candidate, bound))
+        : board.cards.find((candidate) => candidate.slot === bound.slot);
+      if (card && bound.conveyor) bound.slot = card.slot;
       if (!card || !sameCard(card, bound)) {
         return { kind: 'blocked', text: '条件种植绑定已过期:保留卡片已被替换' };
       }
@@ -708,6 +714,7 @@ export class PvzExecutor {
         type: card.type,
         imitates: card.imitates,
         name: normalizedName(card.name),
+        conveyor: board.cards.every(candidate => candidate.cost === null),
       };
       task.reservationBinding = binding;
     }
@@ -736,6 +743,7 @@ export class PvzExecutor {
       if (admissionMode === 'now' && candidate === this.running?.task) return false;
       const binding = candidate.reservationBinding;
       return candidate.id !== exceptTaskId && !candidate.terminal && binding !== null
+        && !binding.conveyor
         && binding.stepIndex >= candidate.stepIndex
         && binding.mode === mode && binding.runId === runId
         && sameCard(card, binding);
@@ -748,9 +756,11 @@ export class PvzExecutor {
     const board = snapshot?.board;
     if (!binding || binding.stepIndex < task.stepIndex || !snapshot || !board
       || snapshot.mode !== binding.mode || board.runId !== binding.runId
-      || !board.cards.some(card => sameCard(card, binding))) return null;
+      || !board.cards.some(card => binding.conveyor ? sameCardType(card, binding) : sameCard(card, binding))) return null;
     return {
-      card: localizedCardDisplay(board, binding.slot),
+      card: binding.conveyor
+        ? pvzSeedSelectorDisplayName((task.steps[binding.stepIndex] as AdmissionBoundPlantStep).plant)
+        : localizedCardDisplay(board, binding.slot),
       forStep: binding.stepIndex === task.stepIndex ? null : binding.stepIndex + 1,
     };
   }
@@ -876,12 +886,17 @@ function admissionPlantBinding(steps: readonly PvzDoStep[], fromIndex = 0): Plan
     type: step.binding.type,
     imitates: step.binding.imitates,
     name: normalizedName(step.binding.name),
+    conveyor: step.binding.conveyor,
   };
 }
 
 function sameCard(card: PvzCard, binding: PlantBinding): boolean {
   return card.slot === binding.slot
-    && card.type === binding.type
+    && sameCardType(card, binding);
+}
+
+function sameCardType(card: PvzCard, binding: PlantBinding): boolean {
+  return card.type === binding.type
     && card.imitates === binding.imitates
     && normalizedName(card.name) === binding.name;
 }

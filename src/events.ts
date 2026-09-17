@@ -28,6 +28,8 @@ import {
   renderSnapshot,
   renderPortals,
   renderTacticalSnapshot,
+  zombiePhaseLabel,
+  renderBossProjectile,
 } from './render.ts';
 import { semanticMenuTarget } from './semantic.ts';
 import {
@@ -315,6 +317,26 @@ export function trackSnapshot(
 
   const oldZombies = new Map((before.board?.zombies ?? []).map((z) => [z.id, z]));
   if (entityContinuity) {
+    const boss = after.board!.boss;
+    const oldBoss = before.board!.boss;
+    if (boss && boss.phase !== oldBoss?.phase) {
+      events.push({
+        type: 'pvz.boss.phase', text: `[PvZ] ${zombiePhaseLabel(boss.phase)}`,
+        urgent: true, senderKey: 'pvz.boss',
+      });
+    }
+    const ball = boss?.projectile;
+    const oldBall = oldBoss?.projectile;
+    if (ball && (ball.kind !== oldBall?.kind || ball.row !== oldBall?.row)) {
+      events.push({ type: 'pvz.boss.projectile', text: `[PvZ] ${renderBossProjectile(ball)}`,
+        urgent: true, senderKey: 'pvz.boss' });
+    } else if (boss && oldBall && !ball) {
+      events.push({ type: 'pvz.boss.projectile',
+        text: `[PvZ] 第${oldBall.row}排${oldBall.kind === 'fireball' ? '火球' : '冰球'}已不在画面中`,
+        urgent: true, senderKey: 'pvz.boss' });
+    }
+  }
+  if (entityContinuity) {
     for (let row = 1; row <= after.board!.rows; row++) {
       if ([before, after].some((snapshot) => snapshot.board!.cells.some((cell) =>
         cell.row === row && (cell.blocker === 'fog_hidden' || cell.blocker === 'dark_hidden')))) continue;
@@ -373,7 +395,7 @@ export function trackSnapshot(
     events.push({
       type: 'pvz.threat.close',
       text: `[PvZ] 近屋威胁：${newlyClose.map((z) =>
-        `${zombieDisplayNameOf(z.type, z.name)}在${cellText(z.row, z.column)}（${mowerStates.get(z.row) === 'ready' ? '这排割草机还在' : mowerStates.get(z.row) === 'triggered' ? '这排割草机正在清路' : '这排割草机已经用掉了'}）`).join('，')}`,
+        `${zombieDisplayNameOf(z.type, z.name)}在${cellText(z.row, z.column)}（${mowerStates.get(z.row) === 'ready' ? '这排割草机还在' : mowerStates.get(z.row) === 'triggered' ? '这排割草机正在清路' : '这排没有可用割草机'}）`).join('，')}`,
       urgent: newlyClose.some((z) => mowerStates.get(z.row) === undefined),
       senderKey: 'pvz-threat',
     });

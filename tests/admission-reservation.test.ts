@@ -27,6 +27,51 @@ function steps(column: number): PvzDoStep[] {
 }
 
 describe('PvZ reservation admission', () => {
+  it.each(['one task', 'two tasks'])('consumes distinct conveyor cards after slot compaction in %s', async (grouping) => {
+    const initial = currentBoard();
+    initial.board!.level = 10;
+    const card = { ...initial.board!.cards[0]!, cost: null };
+    initial.board!.cards = [card,
+      { ...card, slot: 1, type: 1, name: 'sunflower' }, { ...card, slot: 2 }];
+    const transport = new FakePvzTransport(initial);
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant' || !('column' in action)) return;
+      const used = fake.state.board!.cards.find(item => item.slot === action.slot)!;
+      expect(used.name).toBe('peashooter');
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish((draft) => {
+        draft.board!.plants.push({
+          id: 900 + action.column, type: used.type, name: used.name, row: action.row, column: action.column,
+          condition: 'intact', sleeping: false, squished: false, layers: [],
+        });
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      if (grouping === 'one task') {
+        expect(await callTool(world, 'pvz_do', { steps: [plant(3), plant(4)] })).toContain('已受理');
+      } else {
+        expect(await callTool(world, 'pvz_do', { steps: [plant(3)] })).toContain('已受理');
+        expect(await callTool(world, 'pvz_do', { queue: 'append', steps: [plant(4)] })).toContain('已受理');
+      }
+      expect(await callTool(world, 'pvz_do', { queue: 'append', steps: [plant(5)] })).toContain('已经占了 2 张');
+      transport.publish(draft => { for (const item of draft.board!.cards) item.ready = true; });
+      await afterTimers(60);
+      expect(transport.commands).toEqual([
+        { kind: 'plant', slot: 0, row: 2, column: 3 },
+        { kind: 'plant', slot: 1, row: 2, column: 4 },
+      ]);
+      expect(transport.state.board!.plants.map(item => item.column)).toEqual([3, 4]);
+      expect(transport.state.board!.cards.map(item => item.name)).toEqual(['sunflower']);
+      expect(host.events.some(({ event }) => event.type === 'pvz.task'
+        && event.text.includes('已被替换'))).toBe(false);
+    } finally {
+      await world.stop();
+    }
+  });
+
   it('replaces a parked planting reservation and executes only its new destination', async () => {
     const transport = new FakePvzTransport(currentBoard());
     transport.actionHandler = (action, fake) => {

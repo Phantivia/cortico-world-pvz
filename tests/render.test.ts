@@ -8,6 +8,32 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('确认框只发布实际菜单动作，不将 restart 伪装成 confirm', () => {
+  const state = snapshot({ screen: 'dialog', menu: [
+    { id: 'restart', label: 'restart', enabled: true, x: 350, y: 400, state: null, record: null },
+    { id: 'cancel', label: 'cancel', enabled: true, x: 450, y: 400, state: null, record: null },
+  ], dialog: { id: 1, hasPrimary: true, hasSecondary: true, primaryLabel: 'restart', secondaryLabel: 'cancel' } });
+  for (const text of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(text).toContain('restart');
+    expect(text).toContain('cancel');
+    expect(text).not.toContain('confirm');
+  }
+});
+
+it('僵王与球单独描述，夜间屋顶卡片不要求咖啡豆', () => {
+  const state = snapshot({ screen: 'board', mode: 35, board: boardState({ background: 5,
+    cards: [mechanicsCard(14)], boss: { phase: 'boss_aiming', immobilized: false,
+      projectile: { kind: 'fireball', row: 5, columnPosition: 6.6 } },
+  }) });
+  for (const text of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(text).toContain('夜间屋顶');
+    expect(text).toContain('僵王在棋盘右侧：头部瞄准');
+    expect(text).toContain('火球在第5排第6.6列');
+    expect(text).not.toContain('咖啡豆');
+    expect(text).not.toContain('←僵王');
+  }
+});
+
 it('隐形食脑者说明僵尸不可见，不将夜间泳池描述为雾区', () => {
   const state = snapshot({ screen: 'board', mode: 21, modeName: 'invisighoul', modeKind: 'minigame',
     board: boardState({ background: 3, fog: { active: true, visibilityRule: 'invisighoul' } }),
@@ -111,12 +137,13 @@ describe('PvZ 卡片生效条件的公开提示', () => {
     expect(rendered).toContain('模仿者(大喷菇)[100阳光/可用]（变身需时；白天入睡，需咖啡豆唤醒；短程）');
   });
 
-  it('夜间仍把睡眠写成白天条件，吞食与装填延时不冒充卡片冷却', () => {
+  it('夜间不提示咖啡豆，吞食与装填延时不冒充卡片冷却', () => {
     const state = snapshot({ screen: 'board', board: boardState({ background: 1, cards: [
       mechanicsCard(13), mechanicsCard(6), mechanicsCard(47),
     ] }) });
     const rendered = renderSnapshot(state);
-    expect(rendered).toContain('胆小菇[100阳光/可用]（白天入睡，需咖啡豆唤醒）');
+    expect(rendered).toContain('胆小菇[100阳光/可用]');
+    expect(rendered).not.toContain('咖啡豆');
     expect(rendered).toContain('大嘴花[100阳光/可用]（短程；吞食后消化较久）');
     expect(rendered).toContain('玉米加农炮[100阳光/可用]（装填较久）');
     expect(rendered).not.toContain('冷却剩');
@@ -533,7 +560,7 @@ describe('PvZ 公开语义快照', () => {
     expect(full).toContain('模式=种星星');
     expect(full).toContain('关卡 1 · 种星星 · 夜间泳池');
     expect(full).toContain('wall_nut_bowling(已完成)');
-    expect(full).toContain('对话框: confirm[Resume], cancel[Main Menu]');
+    expect(full).not.toContain('confirm[Resume]');
     expect(full).toContain('特殊目标 出售植物·杨桃在第2排第3列');
     expect(full.match(/特殊目标 /g)).toHaveLength(1);
     expect(full).toContain('3杨桃（攻击中）');
@@ -733,7 +760,7 @@ describe('PvZ 公开语义快照', () => {
     const rendered = renderSnapshot(state);
     expect(rendered).toContain('profile_create[Create profile]');
     expect(rendered).toContain('cancel[Cancel]');
-    expect(rendered).toContain('对话框: cancel[Cancel]');
+    expect(rendered.match(/cancel\[Cancel\]/g)).toHaveLength(1);
     expect(rendered).not.toContain('confirm[');
     expect(JSON.stringify(compactSnapshot(state))).not.toContain('918273');
   });

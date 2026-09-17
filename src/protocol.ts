@@ -219,6 +219,12 @@ export interface PvzBoardState {
   cards: PvzCard[];
   plants: PvzPlant[];
   zombies: PvzZombie[];
+  /** The boss spans the right edge; it does not occupy an ordinary lawn cell. */
+  boss?: {
+    phase: string;
+    immobilized: boolean;
+    projectile: { kind: 'fireball' | 'iceball'; row: number; columnPosition: number } | null;
+  } | null;
   gridItems: PvzGridItem[];
   collectibles: PvzCollectible[];
   mowers: PvzMower[];
@@ -777,7 +783,7 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
   exactKeys(board, [
     'runId', 'rows', 'columns', 'level', 'background', 'paused', 'sun', 'cursor', 'fog',
     'disclosure', 'cells', 'cards', 'plants', 'zombies', 'gridItems', 'collectibles',
-    'mowers', 'progress', 'tutorial', 'allowedSpecialActions', 'special',
+    'mowers', 'progress', 'tutorial', 'allowedSpecialActions', 'special', 'boss',
   ], 'snapshot.board');
   if (!nonnegativeInteger(board.runId)
     || !positiveInteger(board.rows) || Number(board.rows) > 6
@@ -815,6 +821,21 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
     throw new Error('snapshot.disclosure 字段无效');
   }
   exactKeys(disclosure, ['entitiesVisible', 'phase'], 'snapshot.disclosure');
+  if (board.boss !== undefined && board.boss !== null) {
+    const boss = board.boss as Record<string, unknown>;
+    if (!disclosure.entitiesVisible || !(mode === 35 || mode === 0 && board.level === 50)
+      || !text(boss.phase, 64)
+      || typeof boss.immobilized !== 'boolean') throw new Error('snapshot.boss 字段无效');
+    exactKeys(boss, ['phase', 'immobilized', 'projectile'], 'snapshot.boss');
+    if (boss.projectile !== null) {
+      const ball = boss.projectile as Record<string, unknown> | undefined;
+      if (!ball || !['fireball', 'iceball'].includes(String(ball.kind))
+        || !positiveInteger(ball.row) || Number(ball.row) > Number(board.rows)
+        || !finite(ball.columnPosition) || Number(ball.columnPosition) < -2
+        || Number(ball.columnPosition) > 11) throw new Error('snapshot.boss.projectile 字段无效');
+      exactKeys(ball, ['kind', 'row', 'columnPosition'], 'snapshot.boss.projectile');
+    }
+  }
   if (!disclosure.entitiesVisible
     && ['plants', 'zombies', 'gridItems', 'collectibles', 'mowers']
       .some((key) => (board[key] as unknown[]).length > 0)) {

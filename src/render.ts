@@ -77,7 +77,8 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
 }
 
 function renderedBoardCard(board: PvzBoardState, card: PvzCard): string {
-  const facts = cardMechanicsFacts(card);
+  const facts = cardMechanicsFacts(card).filter(fact =>
+    ![1, 3, 5].includes(board.background) || fact !== '白天入睡，需咖啡豆唤醒');
   return `${localizedCardDisplay(board, card.slot)}[${cardAvailability(card)}]`
     + (facts.length ? `（${facts.join('；')}）` : '');
 }
@@ -156,7 +157,7 @@ function zombieCellDescription(zombie: PvzBoardState['zombies'][number]): string
   return `${zombieDisplayNameOf(zombie.type, zombie.name)}${zombie.columnPosition.toFixed(1)}列${zombieFacts(zombie)}`;
 }
 
-function zombiePhaseLabel(phase: string | undefined): string {
+export function zombiePhaseLabel(phase: string | undefined): string {
   if (!phase || phase === 'unknown') return '状态未知';
   if (phase === 'zombiquarium_accelerating') return '加速游动';
   if (phase === 'zombiquarium_drifting') return '漂游';
@@ -176,7 +177,15 @@ function zombiePhaseLabel(phase: string | undefined): string {
   if (phase.startsWith('dolphin_')) return '海豚动作中';
   if (phase.startsWith('pogo_')) return '跳跃中';
   if (phase.startsWith('balloon_')) return '气球动作中';
-  if (phase.startsWith('boss_')) return '僵王动作中';
+  const bossPhase = ({
+    boss_entering: '僵王入场', boss_idle: '僵王等待', boss_spawning: '投放僵尸',
+    boss_stomping: '踩踏', boss_bungees_entering: '召来蹦极僵尸',
+    boss_bungees_dropping: '蹦极僵尸下降', boss_bungees_leaving: '蹦极僵尸离开',
+    boss_dropping_rv: '抛掷房车', boss_head_entering: '头部伸入棋盘',
+    boss_aiming: '头部瞄准', boss_recovering: '头部恢复中',
+    boss_spitting: '吐出冰火球', boss_head_leaving: '头部收回',
+  } as Record<string, string>)[phase];
+  if (bossPhase) return bossPhase;
   if (phase.includes('throwing') || phase.includes('launching')) return '投掷中';
   if (phase.includes('smashing') || phase.includes('stomping')) return '砸击中';
   return '动作中';
@@ -184,7 +193,7 @@ function zombiePhaseLabel(phase: string | undefined): string {
 
 function backgroundName(background: number): string {
   return [
-    '白天', '夜晚', '泳池', '夜间泳池', '屋顶', '僵王', '蘑菇园', '温室',
+    '白天', '夜晚', '泳池', '夜间泳池', '屋顶', '夜间屋顶', '蘑菇园', '温室',
     '僵尸水族馆', '智慧树',
   ][background] ?? '未知';
 }
@@ -516,6 +525,18 @@ export function renderPortals(board: PvzBoardState): string[] {
   });
 }
 
+export function renderBossProjectile(ball: NonNullable<NonNullable<PvzBoardState['boss']>['projectile']>): string {
+  return `${ball.kind === 'fireball' ? '火球' : '冰球'}在${cellText(ball.row, ball.columnPosition)}，向房子滚动`;
+}
+
+function renderBoss(board: PvzBoardState): string[] {
+  if (!board.disclosure.entitiesVisible || !board.boss) return [];
+  return [
+    `僵王在棋盘右侧：${zombiePhaseLabel(board.boss.phase)}${board.boss.immobilized ? '，定身' : ''}`,
+    ...(board.boss.projectile ? [renderBossProjectile(board.boss.projectile)] : []),
+  ];
+}
+
 function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string[] {
   const board = snapshot.board;
   if (!board || snapshot.screen !== 'board') return [];
@@ -537,6 +558,7 @@ function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string
     ...boardRowLines(board),
     // 僵尸写在棋盘格里;黑暗里棋盘整行不可见,单独说一句
     ...renderPortals(board),
+    ...renderBoss(board),
     ...(entitiesVisible ? [] : ['僵尸 黑暗中不可见']),
     entitiesVisible
       ? `收集物 ${renderCollectibleCounts(board)}`
@@ -611,16 +633,6 @@ export function renderSnapshot(snapshot: PvzSnapshot, detail: 'summary' | 'full'
   if (snapshot.menu.length) {
     lines.push(`可用菜单动作: ${snapshot.menu.map(renderedMenuAction).join(', ')}`);
   }
-  if (snapshot.dialog) {
-    lines.push(`对话框: ${[
-      snapshot.dialog.hasPrimary
-        ? `confirm[${snapshot.dialog.primaryLabel ?? 'primary'}]`
-        : null,
-      snapshot.dialog.hasSecondary
-        ? `cancel[${snapshot.dialog.secondaryLabel ?? 'secondary'}]`
-        : null,
-    ].filter(Boolean).join(', ')}`);
-  }
   lines.push(...seedPickerLines(snapshot));
   lines.push(...compactBoard(snapshot, detail));
 
@@ -690,6 +702,7 @@ function semanticBoard(snapshot: PvzSnapshot, board: PvzBoardState): Record<stri
     棋盘: semanticBoardMatrix(board),
     卡片: board.cards.map((card) => renderedBoardCard(board, card)),
     ...(renderPortals(board).length ? { 传送门: renderPortals(board) } : {}),
+    ...(renderBoss(board).length ? { 僵王: renderBoss(board) } : {}),
     手持: cursorDescription(board.cursor),
     僵尸: visible ? sortedByCell(board.zombies).map(zombieDescription) : '黑暗中不可见',
     收集物: visible ? renderCollectibleCounts(board) : '黑暗中不可见',
@@ -708,18 +721,6 @@ export function compactSnapshot(snapshot: PvzSnapshot): Record<string, unknown> 
     模式: modeDisplay(snapshot),
     菜单: compactMenu(snapshot),
   };
-  if (snapshot.dialog) {
-    common.对话框 = {
-      按钮: [
-        snapshot.dialog.hasPrimary
-          ? `confirm[${snapshot.dialog.primaryLabel ?? '确认'}]`
-          : null,
-        snapshot.dialog.hasSecondary
-          ? `cancel[${snapshot.dialog.secondaryLabel ?? '取消'}]`
-          : null,
-      ].filter((button) => button !== null),
-    };
-  }
   if (snapshot.screen === 'board') {
     return {
       ...common,

@@ -54,6 +54,25 @@ function evaluate(condition: PvzCondition, board = boardState()): boolean | null
 }
 
 describe('PvZ condition parsing', () => {
+  it('冰火球条件只匹配已公开类型和排，缺少观察能力时保持未知', () => {
+    const fire = parse({ bossProjectile: { kind: 'fireball' } });
+    const ice = parse({ bossProjectile: { kind: 'iceball', row: 5 } });
+    const board = boardState({ boss: { phase: 'boss_spitting', immobilized: false, projectile: null } });
+    expect(evaluate(fire, board)).toBe(false);
+    board.boss!.projectile = { kind: 'fireball', row: 5, columnPosition: 6.6 };
+    expect(evaluate(fire, board)).toBe(true);
+    expect(evaluate(ice, board)).toBe(false);
+    board.boss!.projectile!.kind = 'iceball';
+    expect(evaluate(ice, board)).toBe(true);
+    board.boss!.projectile!.row = 4;
+    expect(evaluate(ice, board)).toBe(false);
+    board.disclosure = { entitiesVisible: false, phase: 'dark' };
+    expect(evaluate(fire, board)).toBeNull();
+    expect(evaluate(fire, boardState({ boss: undefined }))).toBeNull();
+    expect(parsePvzCondition({ bossProjectile: { kind: 'future', row: 5 } })).toHaveProperty('error');
+    expect(parsePvzCondition({ bossProjectile: { kind: 'iceball', row: 0 } })).toHaveProperty('error');
+    expect(parsePvzCondition({ bossProjectile: { kind: 'iceball', hidden: true } })).toHaveProperty('error');
+  });
   it('counts matching visible collectibles and keeps obscured absence unknown', () => {
     const condition = parse({ collectible: { kind: 'usable_seed', minCount: 2 } });
     const board = boardState({ collectibles: [
@@ -517,7 +536,7 @@ describe('PvZ condition descriptions and schema', () => {
     }
     const variants = parameters.$defs.pvzCondition.oneOf;
     expect(variants.map((variant: { required: string[] }) => variant.required[0]).sort())
-      .toEqual(['all', 'any', 'card', 'cell', 'collectible', 'not', 'sun', 'zombie']);
+      .toEqual(['all', 'any', 'bossProjectile', 'card', 'cell', 'collectible', 'not', 'sun', 'zombie']);
     for (const variant of variants) expect(variant.additionalProperties).toBe(false);
   });
 });

@@ -11,6 +11,46 @@ import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
 import { renderSnapshot, renderTacticalSnapshot, compactSnapshot } from '../src/render.ts';
 
+it('僵王动作变化分别描述头部伸入、瞄准、吐球与收回', () => {
+  let before = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
+    phase: 'boss_idle', immobilized: false, projectile: null,
+  } }) });
+  for (const [phase, label] of [
+    ['boss_head_entering', '头部伸入棋盘'], ['boss_aiming', '头部瞄准'],
+    ['boss_spitting', '吐出冰火球'], ['boss_head_leaving', '头部收回'],
+  ]) {
+    const after = structuredClone(before);
+    after.board!.boss!.phase = phase!;
+    expect(renderSnapshot(after)).toContain(label!);
+    expect(trackSnapshot(after, before)).toContainEqual(expect.objectContaining({
+      type: 'pvz.boss.phase', text: `[PvZ] ${label}`, urgent: true,
+    }));
+    expect(trackSnapshot(after, after).some(event => event.type === 'pvz.boss.phase')).toBe(false);
+    before = after;
+  }
+});
+
+it('冰火球出现和消失产生事件，滚动不重复出现，遮挡不冒充消失', () => {
+  const before = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
+    phase: 'boss_spitting', immobilized: false, projectile: null,
+  } }) });
+  const after = structuredClone(before);
+  after.board!.boss!.projectile = { kind: 'iceball', row: 4, columnPosition: 6.5 };
+  expect(trackSnapshot(after, before)).toContainEqual(expect.objectContaining({
+    type: 'pvz.boss.projectile', text: '[PvZ] 冰球在第4排第6.5列，向房子滚动', urgent: true,
+  }));
+  const moved = structuredClone(after);
+  moved.board!.boss!.projectile!.columnPosition = 5;
+  expect(trackSnapshot(moved, after).filter(event => event.type === 'pvz.boss.projectile')).toEqual([]);
+  expect(trackSnapshot(before, after)).toContainEqual(expect.objectContaining({
+    type: 'pvz.boss.projectile', text: '[PvZ] 第4排冰球已不在画面中',
+  }));
+  const hidden = structuredClone(before);
+  hidden.board!.boss = null;
+  hidden.board!.disclosure = { entitiesVisible: false, phase: 'dark' };
+  expect(trackSnapshot(hidden, after).filter(event => event.type === 'pvz.boss.projectile')).toEqual([]);
+});
+
 it('可见冰道生长与清除改变地格和事件，遮挡不冒充清冰', () => {
   const before = snapshot({ screen: 'board', mode: 28, modeName: 'bobsled_bonanza', board: boardState() });
   const icy = structuredClone(before);
@@ -177,7 +217,7 @@ describe('PvZ 事件驱动唤醒', () => {
     const event = trackSnapshot(after, before)
       .find((candidate) => candidate.type === 'pvz.threat.close');
     expect(event).toMatchObject({ urgent: true });
-    expect(event?.text).toContain('路障僵尸在第4排第2列（这排割草机已经用掉了）');
+    expect(event?.text).toContain('路障僵尸在第4排第2列（这排没有可用割草机）');
 
     const readyBefore = snapshot({ screen: 'board', board: boardState({
       zombies: [{
@@ -913,7 +953,7 @@ describe('PvZ 事件驱动唤醒', () => {
       .find((event) => event.type === 'pvz.threat.close');
     expect(close).toMatchObject({ urgent: false });
     expect(close?.text).toContain('路障僵尸在第1排第2列（这排割草机正在清路）');
-    expect(close?.text).not.toContain('这排割草机已经用掉了');
+    expect(close?.text).not.toContain('这排没有可用割草机');
   });
 
   it('Whack-a-Zombie 同数量目标轮换也立即唤醒', () => {

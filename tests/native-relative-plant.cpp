@@ -108,6 +108,8 @@ struct Fixture {
         board.put(pvz::board::challenge, challenge.address());
         board.put(pvz::board::zombies, ArrayHeader{zombies.address(), 8, 8, 0, 8, 1, 0});
         board.put(pvz::board::plants, ArrayHeader{plants.address(), 4, 4, 0, 4, 1, 0});
+        bank.put(0x10, 599);
+        bank.put(0x14, 87);
         bank.put(pvz::seedBank::packetCount, 1);
         const size_t packet = pvz::seedBank::packets;
         bank.put(packet + 0x10, 50);

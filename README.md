@@ -1,6 +1,4 @@
-# cortico-world-pvz
-
-Owner: `src/definition.ts`
+# `src/definition.ts`: cortico-world-pvz
 
 `cortico-world-pvz` exposes the original PopCap Plants vs. Zombies as a semantic, event-driven World. The model can operate menus, choose seeds, play ordinary and special levels, and confirm progression without deriving state from pixels.
 
@@ -33,6 +31,9 @@ The first profile is deliberately specific:
 The implant verifies the PE fingerprint and critical instruction bytes before enabling actions. A matching version-resource string is insufficient: common English 1.2.0.1073 builds use a different layout, and the widely published `module+0x329670` pointer does not address `gLawnApp` in this localized executable.
 
 ## Perception boundary
+
+Dialog buttons use the same callable action names as the menu list, including a repeated
+`restart` or `main_menu` when a confirmation dialog offers that action.
 
 The disclosure boundary is enforced inside the implant, before JSON crosses the pipe.
 
@@ -85,7 +86,7 @@ Staleness is the reason these primitives exist: the interval between the module 
 
 These conditions specify one finite action; plant choice, lane choice, and repetition remain model decisions.
 
-On a conveyor board the seed bank refills from the belt: consuming one packet shifts the rest one place left. How many steps may ask for a given card is how many of that identity the belt holds right now, counted across everything the model has in flight: the remaining steps of every queued or parked task plus the steps carried by every armed trigger. Identity is type plus imitated plant; packets sharing it are interchangeable, so the step names the card without its `#N` ordinal and supplies its own target cell. A fired trigger reaches the executor without passing through `pvz_do`, so the budget is charged at arm time. Collection and shovelling do not touch cards and are never counted. The board kind is inferred from every card reporting a null cost, which is how the implant serializes a conveyor bank. A bowling throw changes neither screen nor special phase, so it is exempt from the rule that a phase-changing step ends its queue.
+On a conveyor board the seed bank refills from the belt: consuming one packet shifts the rest one place left. How many steps may ask for a given card is how many of that identity the belt holds right now, counted across everything the model has in flight: the remaining steps of every queued or parked task plus the steps carried by every armed trigger. Identity is type plus imitated plant; packets sharing it are interchangeable, so the step names the card without its `#N` ordinal and supplies its own target cell. Conditional planting reserves this quantity and resolves the current slot before each step. A fired trigger reaches the executor without passing through `pvz_do`, so the budget is charged at arm time. Collection and shovelling do not touch cards and are never counted. The board kind is inferred from every card reporting a null cost, which is how the implant serializes a conveyor bank. A bowling throw changes neither screen nor special phase, so it is exempt from the rule that a phase-changing step ends its queue.
 
 Planting also accepts `column:{aheadOf:"nearest_hostile",minGap:0..8}` instead of an integer column, and it is the default for anything whose usefulness depends on where the zombies are — single-use burst and trap plants, and blockers meant to stand in front of the lane. The native input worker selects the nearest disclosed living hostile in the chosen row when input starts, then retains that run and target identity. The cell is `floor((x-40)/80)+1-minGap` using the target's unrounded position, with smaller columns toward the house: the first term is the cell the game itself assigns the zombie — the one whose centre is nearest — so `minGap:0` is the cell the target stands in and `minGap:1` the cell in front of it. A result before the first column is clamped to column 1, the only cell still ahead of a target that has reached the house; a result past column 9 is refused instead, because the target has not walked onto the board yet. `minGap` is a lower bound: the landing cell is the first cell from there toward the house that takes the plant, because a target chewing on a plant stands on that plant's cell and "ahead of this target" still has exactly one nearest answer; when no cell ahead takes it, the attempt ends with that reason. It rechecks the landing at the actual input boundary and permits bounded cursor correction before pressing. Target loss, a changed row, unsupported motion, no usable cell, or a changed run ends the attempt with that reason, and never by retargeting, changing row, or adding a missing lily pad. A rejected relative step is local to that step, like a rejected absolute cell: the queue continues with the next step. Relative placement receipts name the cell actually committed and require the expected plant on it; card consumption alone is insufficient evidence.
 
@@ -152,6 +153,11 @@ Progress combines the current scene, mode, board-level meter, flag state, Challe
 For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent and append immediate responses as separate runnable tasks. This preserves the intended placement across cooldown and affordability changes without polling or competing clicks.
 
 ## Special-level contracts
+
+Zomboss phases and visible ice/fire balls have semantic state and change events. A
+`bossProjectile: { kind: "fireball" | "iceball", row?: number }` condition can arm a single
+response to an already visible ball. Omit `row` to match any lane. The model chooses the plant
+and its empty flower pot; the condition neither selects a tactic nor reveals a future attack.
 
 - Seed selection and removal settle only after the packet's travel animation ends, so replacement can immediately reselect a removed packet.
 - Resuming a saved minigame is verified when its menu advances to the same mode's active board, including menus that have no board snapshot yet.

@@ -9,6 +9,22 @@ import {
 import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 
 describe('PvZ 原生协议边界', () => {
+  it('接受可见僵王与球，拒绝越界、隐藏或其他关卡中的球', () => {
+    const state = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
+      phase: 'boss_spitting', immobilized: false,
+      projectile: { kind: 'fireball', row: 5, columnPosition: 6.6 },
+    } }) });
+    const parse = () => parseNativeMessage(JSON.stringify({ type: 'snapshot', protocol: PVZ_NATIVE_PROTOCOL, snapshot: state }));
+    expect(parse()).toMatchObject({ snapshot: { board: { boss: state.board!.boss } } });
+    state.board!.boss!.projectile!.row = 6;
+    expect(parse).toThrow('boss.projectile');
+    state.board!.boss!.projectile!.row = 5;
+    state.mode = 34;
+    expect(parse).toThrow('boss');
+    state.mode = 35;
+    state.board!.disclosure = { entitiesVisible: false, phase: 'dark' };
+    expect(parse).toThrow('boss');
+  });
   it('右边界仅允许传送门，种植范围仍为九列', () => {
     const state = snapshot({ screen: 'board', mode: 26, modeName: 'portal_combat', board: boardState({
       gridItems: [{ id: 1, kind: 'square_portal', row: 2, column: 10 }],

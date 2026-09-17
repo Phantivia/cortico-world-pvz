@@ -2119,9 +2119,16 @@ struct CardView {
     bool refreshing;
     int x;
     int y;
+    RECT hitRect;
 };
 
 struct BoardView {
+    struct BossProjectile {
+        bool visible = false;
+        bool fire = false;
+        int row = 0;
+        float x = 0;
+    } bossProjectile;
     uintptr_t lawnApp = 0;
     uintptr_t address = 0;
     int rows = 5;
@@ -2772,10 +2779,14 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
     int packetCount = 0;
     int bankX = 0;
     int bankY = 0;
+    int bankWidth = 0;
+    int bankHeight = 0;
     if (SafeRead(view.address + pvz::board::seedBank, bank) && bank &&
         SafeRead(bank + 0x08, bankX) && SafeRead(bank + 0x0C, bankY) &&
         SafeRead(bank + pvz::seedBank::packetCount, packetCount) &&
         packetCount >= 0 && packetCount <= 10) {
+        SafeRead(bank + 0x10, bankWidth);
+        SafeRead(bank + 0x14, bankHeight);
         for (int slot = 0; slot < packetCount; ++slot) {
             std::array<uint8_t, pvz::seedBank::packetStride> packet{};
             const uintptr_t address = bank + pvz::seedBank::packets +
@@ -2786,14 +2797,24 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
             const int packetHeight = Field<int>(packet, 0x14);
             if (type < 0 || type > 255 || packetWidth <= 0 || packetWidth > 200 ||
                 packetHeight <= 0 || packetHeight > 200) continue;
-            const int centerX = bankX + Field<int>(packet, 0x08) + Field<int>(packet, 0x30) +
-                                packetWidth / 2;
-            const int centerY = bankY + Field<int>(packet, 0x0C) + packetHeight / 2;
+            int left = bankX + Field<int>(packet, 0x08) + Field<int>(packet, 0x30);
+            int top = bankY + Field<int>(packet, 0x0C);
+            int right = left + packetWidth;
+            int bottom = top + packetHeight;
+            if (HasConveyorSeedBank(mode, view.level)) {
+                left = std::max(left, bankX);
+                top = std::max(top, bankY);
+                right = std::min(right, bankX + bankWidth);
+                bottom = std::min(bottom, bankY + bankHeight);
+                if (left >= right || top >= bottom) continue;
+            }
+            const int centerX = left + (right - left) / 2;
+            const int centerY = top + (bottom - top) / 2;
             view.cards.push_back({
                 slot, type, Field<int>(packet, 0x38), Field<int>(packet, 0x24),
                 Field<int>(packet, 0x28), Field<int>(packet, 0x4C),
                 Field<uint8_t>(packet, 0x48) != 0, Field<uint8_t>(packet, 0x49) != 0,
-                centerX, centerY});
+                centerX, centerY, {left, top, right, bottom}});
         }
     }
 
@@ -2864,6 +2885,29 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
             const bool whackPresented = !IsWhackLevel(mode, view.level) ||
                 !requirePresentedWhack || WhackTargetWasPresented(
                     view.address, mode, view.level, publicId);
+            if (type == 25) {
+                const uint32_t ballId = Field<uint32_t>(item, 0x140);
+                const int ballRow = Field<int>(item, 0x14C);
+                uintptr_t effects = 0;
+                uintptr_t holder = 0;
+                ArrayHeader animations{};
+                std::array<uint8_t, 0xA0> animation{};
+                const uint32_t index = ballId & 0xFFFF;
+                if (ballId && ballRow >= 0 && ballRow < view.rows &&
+                    SafeRead(lawnApp + 0x940, effects) && effects &&
+                    SafeRead(effects + 0x08, holder) && holder &&
+                    SafeRead(holder, animations) && index < animations.maxSize &&
+                    SafeCopy(animation.data(), animations.block + index * 0xA0, animation.size()) &&
+                    Field<uint32_t>(animation, 0x9C) == ballId && !Field<uint8_t>(animation, 0x14)) {
+                    const float ballX = Field<float>(animation, 0x2C);
+                    const float ballY = Field<float>(animation, 0x38);
+                    if (std::isfinite(ballX) && std::isfinite(ballY) &&
+                        ballX + 150 > 0 && ballX < 800 && ballY + 150 > 0 && ballY < 600) {
+                        view.bossProjectile = {true, Field<uint8_t>(item, 0x150) != 0,
+                                               ballRow, ballX + 75};
+                    }
+                }
+            }
             view.zombies.push_back({
                 publicId, type, Field<int>(item, 0x28), row, column,
                 Field<int>(item, 0x80), Field<int>(item, 0x64),
@@ -4619,7 +4663,7 @@ void AppendZombies(std::string& output, const BoardView& board) {
     output.push_back('[');
     bool first = true;
     for (const auto& zombie : board.zombies) {
-        if (!zombie.whackPresented) continue;
+        if (!zombie.whackPresented || zombie.type == 25) continue;
         if (!first) output.push_back(',');
         first = false;
         const char* band = zombie.x < 240 ? "lawn" : zombie.x < 430 ? "near" :
@@ -4668,6 +4712,30 @@ void AppendZombies(std::string& output, const BoardView& board) {
         output.push_back('}');
     }
     output.push_back(']');
+}
+
+void AppendBoss(std::string& output, const BoardView& board) {
+    const auto boss = std::find_if(board.zombies.begin(), board.zombies.end(),
+        [](const ZombieView& zombie) { return zombie.type == 25; });
+    if (!board.entitiesVisible || boss == board.zombies.end()) {
+        output += "null";
+        return;
+    }
+    output += "{\"phase\":";
+    AppendString(output, ZombiePhaseName(boss->phase));
+    output += ",\"immobilized\":";
+    AppendBool(output, boss->immobilized);
+    output += ",\"projectile\":";
+    if (board.bossProjectile.visible) {
+        output += "{\"kind\":";
+        AppendString(output, board.bossProjectile.fire ? "fireball" : "iceball");
+        output += ",\"row\":";
+        AppendInt(output, board.bossProjectile.row + 1);
+        output += ",\"columnPosition\":";
+        AppendTenth(output, ZombieColumnTenths(static_cast<int>(board.bossProjectile.x)));
+        output.push_back('}');
+    } else output += "null";
+    output.push_back('}');
 }
 
 void AppendGridItems(std::string& output, const BoardView& board) {
@@ -5774,6 +5842,8 @@ void AppendBoard(std::string& output, const BoardView& board, int mode) {
     AppendPlants(output, board);
     output += ",\"zombies\":";
     AppendZombies(output, board);
+    output += ",\"boss\":";
+    AppendBoss(output, board);
     output += ",\"gridItems\":";
     AppendGridItems(output, board);
     output += ",\"collectibles\":";
@@ -6575,6 +6645,47 @@ bool ClickValidated(HWND window, int x, int y, ULONGLONG epoch, Validator&& vali
 
 bool Click(HWND window, int x, int y, ULONGLONG epoch) {
     return ClickValidated(window, x, y, epoch, [] { return true; });
+}
+
+// Conveyor packets can leave a click point while the cursor is travelling to it.
+template <typename ClickPacket>
+bool SelectConveyorPacket(const BoardView& origin, int mode, const CardView& expected,
+                          ClickPacket&& click) {
+    const auto read = [&](CardView& packet) {
+        BoardView board;
+        int currentMode = -1;
+        if (!SafeRead(origin.lawnApp + pvz::app::gameMode, currentMode) || currentMode != mode ||
+            !ReadBoard(origin.lawnApp, mode, board) || board.address != origin.address ||
+            !SameBoardCounterRun(board.mainCounter, origin.mainCounter) || board.paused) return false;
+        const auto found = std::find_if(board.cards.begin(), board.cards.end(),
+            [&](const CardView& value) { return value.slot == expected.slot; });
+        if (found == board.cards.end() || found->type != expected.type ||
+            found->imitater != expected.imitater || !found->active) return false;
+        packet = *found;
+        return true;
+    };
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        CardView target;
+        if (!read(target)) return false;
+        bool moved = false;
+        if (click(target.x, target.y, [&] {
+            CardView current;
+            if (!read(current)) return false;
+            moved = target.x < current.hitRect.left || target.x >= current.hitRect.right ||
+                    target.y < current.hitRect.top || target.y >= current.hitRect.bottom;
+            return !moved;
+        })) return true;
+        if (!moved) return false;
+    }
+    return false;
+}
+
+bool ClickSeedPacket(HWND window, const BoardView& board, int mode, const CardView& card,
+                     ULONGLONG epoch) {
+    if (!HasConveyorSeedBank(mode, board.level)) return Click(window, card.x, card.y, epoch);
+    return SelectConveyorPacket(board, mode, card, [&](int x, int y, auto&& validate) {
+        return ClickValidated(window, x, y, epoch, validate);
+    });
 }
 
 bool Drag(HWND window, int fromX, int fromY, int toX, int toY, ULONGLONG epoch) {
@@ -8385,7 +8496,7 @@ bool ExecuteAction(const Command& command, std::string& reason, bool apply,
         int x = 0;
         int y = 0;
         CellCenter(board, background, command.row - 1, command.column - 1, x, y);
-        if (!Click(window, card->x, card->y, command.epoch)) {
+        if (!ClickSeedPacket(window, semanticBoard, mode, *card, command.epoch)) {
             reason = "failed to post seed-bank selection input";
             return false;
         }
@@ -9228,7 +9339,7 @@ bool ExecuteAction(const Command& command, std::string& reason, bool apply,
             } else {
                 for (const auto& zombie : semanticBoard.zombies) initialZombies.insert(zombie.id);
             }
-            if (!Click(window, card->x, card->y, command.epoch) ||
+            if (!ClickSeedPacket(window, semanticBoard, mode, *card, command.epoch) ||
                 !clickCell(command.row, command.column)) {
                 reason = "failed to post card-based special input";
                 return false;

@@ -1716,7 +1716,7 @@ describe('PvzWorld 工具流程', () => {
         'pvz.threat.close', 'pvz.collectible.appeared',
       ]);
       expect(emitted.map(({ options }) => options?.trigger)).toEqual(['piggyback', 'flush']);
-      expect(emitted[0]?.event.text).toContain('这排割草机已经用掉了');
+      expect(emitted[0]?.event.text).toContain('这排没有可用割草机');
     } finally {
       await world.stop();
     }

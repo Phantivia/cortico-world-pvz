@@ -40,6 +40,41 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('可见火球触发一次冰菇种植，未吐球和后续火球不会重复消耗卡片', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
+      board: boardState({ background: 5, boss: { phase: 'boss_spitting', immobilized: false, projectile: null },
+        cards: [{ slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
+          affordable: true, cooldown: 'ready', cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+          x: 150, y: 40 }],
+      }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => { draft.board!.cards = []; draft.board!.boss!.projectile = null; });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_arm', {
+        when: { bossProjectile: { kind: 'fireball' } },
+        steps: [{ skill: 'plant', plant: 'ice_shroom', row: 2, column: 3 }],
+      })).toContain('已武装');
+      await afterTimers(30);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      transport.publish(draft => {
+        draft.board!.boss!.projectile = { kind: 'fireball', row: 5, columnPosition: 6.6 };
+      });
+      await afterTimers(150);
+      expect(transport.state.board!.cards).toHaveLength(0);
+      expect(host.events.some(({ event }) => event.type === 'pvz.task' && event.text.includes('完成'))).toBe(true);
+      const count = transport.commands.filter(action => action.kind === 'plant').length;
+      transport.publish(draft => {
+        draft.board!.boss!.projectile = { kind: 'fireball', row: 1, columnPosition: 6.6 };
+      });
+      await afterTimers(30);
+      expect(transport.commands.filter(action => action.kind === 'plant')).toHaveLength(count);
+    } finally { await world.stop(); }
+  });
   it('只在指定植物种子出现时拾取该包，保留其他种子', async () => {
     const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState() }));
     transport.actionHandler = (action, fake) => {

@@ -44,6 +44,7 @@ export function boardState(overrides: Partial<PvzBoardState> = {}): PvzBoardStat
     cards: [],
     plants: [],
     zombies: [],
+    boss: null,
     gridItems: [],
     collectibles: [],
     mowers: Array.from({ length: 5 }, (_, row) => ({

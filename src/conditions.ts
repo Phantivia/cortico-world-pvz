@@ -3,6 +3,7 @@ import type { PvzBoardCell, PvzBoardState, PvzSnapshot } from './protocol.ts';
 import type { PvzPlantName, PvzSeedSelector } from './skills.ts';
 
 export type PvzCondition =
+  | { bossProjectile: { kind: 'fireball' | 'iceball'; row?: number } }
   | { sun: { min?: number; max?: number } }
   | { card: { plant: PvzSeedSelector; ready?: boolean; affordable?: boolean } }
   | { cell: { row: number; column: number; layer: 'main' | 'base' | 'pumpkin'; empty: boolean } }
@@ -65,6 +66,16 @@ export function parsePvzCondition(raw: unknown): ParseResult {
     }
     const fields = record(value[key]);
     if (!fields) return { error: `${at}: 必须是谓词对象` };
+    if (key === 'bossProjectile') {
+      if (!onlyKeys(fields, ['kind', 'row'])
+        || (fields.kind !== 'fireball' && fields.kind !== 'iceball')
+        || (fields.row !== undefined && !integer(fields.row, 1, MAX_ROWS))) {
+        return { error: `${at}: 需要 kind=fireball/iceball，可选 row=1–6` };
+      }
+      return { condition: { bossProjectile: { kind: fields.kind,
+        ...(fields.row === undefined ? {} : { row: fields.row as number }),
+      } } };
+    }
     if (key === 'sun') {
       if (!onlyKeys(fields, ['min', 'max'])
         || !optionalNumber(fields, 'min', 0, Number.MAX_VALUE)
@@ -223,6 +234,13 @@ export function evaluatePvzCondition(
       && (affordable === undefined || card.affordable === affordable));
   }
   if (!board.disclosure.entitiesVisible) return null;
+  if ('bossProjectile' in condition) {
+    if (board.boss === undefined) return null;
+    const { kind, row } = condition.bossProjectile;
+    if (row !== undefined && row > board.rows) return null;
+    const ball = board.boss?.projectile;
+    return !!ball && ball.kind === kind && (row === undefined || ball.row === row);
+  }
   if ('collectible' in condition) {
     const { kind, plant, minCount = 1 } = condition.collectible;
     const count = board.collectibles.filter((item) => item.kind === kind
@@ -284,6 +302,10 @@ function rowsOf(condition: Extract<PvzCondition, { zombie: unknown }>['zombie'])
 }
 
 export function describePvzCondition(condition: PvzCondition): string {
+  if ('bossProjectile' in condition) {
+    const { kind, row } = condition.bossProjectile;
+    return `${row === undefined ? '棋盘' : rowText(row)}出现可见${kind === 'fireball' ? '火球' : '冰球'}`;
+  }
   if ('all' in condition) return `全部满足(${condition.all.map(describePvzCondition).join('；')})`;
   if ('any' in condition) return `任一满足(${condition.any.map(describePvzCondition).join('；')})`;
   if ('not' in condition) return `不满足(${describePvzCondition(condition.not)})`;
@@ -328,6 +350,14 @@ export const PVZ_CONDITION_DEFS = {
     description: '可自由组合的可见事实条件，用 all/any/not 组合，最多 8 层、64 节点。'
       + '条件成立那一刻由 World 替你落子，中间不再隔一轮观察和思考；未知保留为未知。',
     oneOf: [
+      {
+        type: 'object', additionalProperties: false, required: ['bossProjectile'],
+        properties: { bossProjectile: {
+          type: 'object', additionalProperties: false, required: ['kind'],
+          description: '僵王已经吐出且画面中可见的冰火球；省略 row 匹配任意排。',
+          properties: { kind: { type: 'string', enum: ['fireball', 'iceball'] }, row: ROW_SCHEMA },
+        } },
+      },
       {
         type: 'object', additionalProperties: false, required: ['sun'],
         properties: { sun: {
