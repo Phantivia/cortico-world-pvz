@@ -2856,8 +2856,9 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
             column = std::clamp((clickX - 40) / 80, 0, 8);
             row = std::clamp((clickY - 80) / 100, 0, 4);
         }
+        const bool rightEdgePortal = mode == 26 && (type == 4 || type == 5) && column == 9;
         if (!discloseBoardEntities || Field<uint8_t>(item, 0x20) || type <= 0 || type > 64 ||
-            column < 0 || column >= 9 || row < 0 || row >= 6 ||
+            column < 0 || (column >= 9 && !rightEdgePortal) || row < 0 || row >= 6 ||
             !FogAllowsZombie(view.address, 0, view.background, x, row)) return;
         const uint32_t publicId = PublicObjectId(
             view.address, view.mainCounter, EntityKind::GridItem, id);

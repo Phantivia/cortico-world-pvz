@@ -26,6 +26,7 @@ import {
   cursorDescription,
   mowerName,
   renderSnapshot,
+  renderPortals,
   renderTacticalSnapshot,
 } from './render.ts';
 import { semanticMenuTarget } from './semantic.ts';
@@ -313,6 +314,24 @@ export function trackSnapshot(
   }
 
   const oldZombies = new Map((before.board?.zombies ?? []).map((z) => [z.id, z]));
+  if (entityContinuity && after.modeName === 'portal_combat') {
+    const portals = renderPortals(after.board!);
+    if (JSON.stringify(portals) !== JSON.stringify(renderPortals(before.board!))) {
+      events.push({
+        type: 'pvz.portals.changed', text: `[PvZ] 传送门变化：${portals.join('；') || '无'}`,
+        urgent: true,
+      });
+    }
+    for (const zombie of after.board!.zombies) {
+      const old = oldZombies.get(zombie.id);
+      if (!old || old.row === zombie.row) continue;
+      events.push({
+        type: 'pvz.zombie.relocated',
+        text: `[PvZ] ${zombieDisplayNameOf(zombie.type, zombie.name)}从${cellText(old.row, old.column)}移到${cellText(zombie.row, zombie.column)}`,
+        urgent: true,
+      });
+    }
+  }
   if (entityContinuity && after.modeName === 'zombiquarium') {
     for (const zombie of after.board!.zombies) {
       const old = oldZombies.get(zombie.id);

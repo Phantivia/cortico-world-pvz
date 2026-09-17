@@ -506,6 +506,16 @@ function shovelTutorialPhase(phase: NonNullable<PvzBoardState['tutorial']>['phas
   return '继续铲除';
 }
 
+export function renderPortals(board: PvzBoardState): string[] {
+  if (!board.disclosure.entitiesVisible) return [];
+  return ['square_portal', 'round_portal'].flatMap((kind) => {
+    const portals = sortedByCell(board.gridItems.filter((item) => item.kind === kind));
+    return portals.length ? [`${gridItemLabel(kind)}：${portals.map((item) =>
+      item.column > board.columns ? `${rowText(item.row)}右边界` : cellText(item.row, item.column)
+    ).join(' ↔ ')}`] : [];
+  });
+}
+
 function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string[] {
   const board = snapshot.board;
   if (!board || snapshot.screen !== 'board') return [];
@@ -526,6 +536,7 @@ function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string
     `手持 ${cursorDescription(board.cursor)}`,
     ...boardRowLines(board),
     // 僵尸写在棋盘格里;黑暗里棋盘整行不可见,单独说一句
+    ...renderPortals(board),
     ...(entitiesVisible ? [] : ['僵尸 黑暗中不可见']),
     entitiesVisible
       ? `收集物 ${renderCollectibleCounts(board)}`
@@ -678,6 +689,7 @@ function semanticBoard(snapshot: PvzSnapshot, board: PvzBoardState): Record<stri
     进度: renderProgress(board.progress),
     棋盘: semanticBoardMatrix(board),
     卡片: board.cards.map((card) => renderedBoardCard(board, card)),
+    ...(renderPortals(board).length ? { 传送门: renderPortals(board) } : {}),
     手持: cursorDescription(board.cursor),
     僵尸: visible ? sortedByCell(board.zombies).map(zombieDescription) : '黑暗中不可见',
     收集物: visible ? renderCollectibleCounts(board) : '黑暗中不可见',

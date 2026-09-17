@@ -11,6 +11,35 @@ import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
 import { renderSnapshot, renderTacticalSnapshot, compactSnapshot } from '../src/render.ts';
 
+it('传送门配对包含右边界，换位和可见僵尸跨排移动产生事件', () => {
+  const before = snapshot({ screen: 'board', mode: 26, modeName: 'portal_combat', board: boardState({
+    gridItems: [
+      { id: 1, kind: 'square_portal', row: 1, column: 3 },
+      { id: 2, kind: 'square_portal', row: 2, column: 10 },
+      { id: 3, kind: 'round_portal', row: 4, column: 10 },
+      { id: 4, kind: 'round_portal', row: 5, column: 3 },
+    ],
+    zombies: [{ id: 1, type: 0, name: 'zombie', row: 2, column: 9, columnPosition: 9,
+      xBand: 'far', speedCellsPerSecond: 0.1, condition: 'intact', armor: 'none', shield: 'none',
+      hypnotized: false, slowed: false, immobilized: false }],
+  }) });
+  for (const text of [renderSnapshot(before), renderTacticalSnapshot(before), JSON.stringify(compactSnapshot(before))]) {
+    expect(text).toContain('方形传送门：第1排第3列 ↔ 第2排右边界');
+    expect(text).toContain('圆形传送门：第4排右边界 ↔ 第5排第3列');
+  }
+  const after = structuredClone(before);
+  after.board!.gridItems[0]!.row = 3;
+  Object.assign(after.board!.zombies[0]!, { row: 1, column: 2, columnPosition: 2 });
+  expect(trackSnapshot(after, before)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'pvz.portals.changed', text: expect.stringContaining('第3排第3列'), urgent: true }),
+    expect.objectContaining({ type: 'pvz.zombie.relocated', text: expect.stringContaining('从第2排第9列移到第1排第2列'), urgent: true }),
+  ]));
+  expect(trackSnapshot(after, after).some(event => ['pvz.portals.changed', 'pvz.zombie.relocated'].includes(event.type))).toBe(false);
+  after.board!.disclosure = { entitiesVisible: false, phase: 'dark' };
+  expect(renderSnapshot(after)).not.toContain('右边界');
+  expect(trackSnapshot(after, before).some(event => event.type === 'pvz.portals.changed')).toBe(false);
+});
+
 it('水族僵尸变绿报告饥饿，进食恢复体色；游近左侧不产生近屋威胁', () => {
   const before = snapshot({ screen: 'board', mode: 23, modeName: 'zombiquarium', board: boardState({
     zombies: [{ id: 1, type: 11, name: 'snorkel_zombie', row: 2, column: 7,

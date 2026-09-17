@@ -9,6 +9,18 @@ import {
 import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 
 describe('PvZ 原生协议边界', () => {
+  it('右边界仅允许传送门，种植范围仍为九列', () => {
+    const state = snapshot({ screen: 'board', mode: 26, modeName: 'portal_combat', board: boardState({
+      gridItems: [{ id: 1, kind: 'square_portal', row: 2, column: 10 }],
+    }) });
+    const parse = () => parseNativeMessage(JSON.stringify({ type: 'snapshot', protocol: PVZ_NATIVE_PROTOCOL, snapshot: state }));
+    expect(parse()).toMatchObject({ snapshot: { board: { columns: 9, gridItems: [{ column: 10 }] } } });
+    state.board!.gridItems[0]!.kind = 'gravestone';
+    expect(parse).toThrow('gridItem');
+    state.board!.gridItems[0]!.kind = 'round_portal';
+    state.board!.gridItems[0]!.column = 11;
+    expect(parse).toThrow('gridItem');
+  });
   it('语义快照键覆盖完整可见状态并忽略采样时钟', () => {
     const before = snapshot({
       screen: 'board',

@@ -113,6 +113,7 @@ export interface PvzGridItem {
   id: number;
   kind: string;
   row: number;
+  /** A portal at the visible right boundary uses board.columns + 1. */
   column: number;
   visibleHint?: 'unknown' | 'plant' | 'zombie';
   revealedContent?:
@@ -911,7 +912,8 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
     if (!item || !nonnegativeInteger(item.id) || !text(item.kind, 128)
       || gridItemIds.has(Number(item.id))
       || !positiveInteger(item.row) || Number(item.row) > Number(board.rows)
-      || !positiveInteger(item.column) || Number(item.column) > Number(board.columns)) {
+      || !positiveInteger(item.column) || Number(item.column) > Number(board.columns)
+        + (item.kind === 'round_portal' || item.kind === 'square_portal' ? 1 : 0)) {
       throw new Error('snapshot.gridItem 字段无效');
     }
     exactKeys(item, [

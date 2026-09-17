@@ -172,6 +172,7 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 - Last Stand exposes setup and onslaught on the same board run; Survival alone uses the inter-stage seed picker.
 - Cob Cannon verifies source readiness, target selection, and the subsequent cooldown state.
 - Seeing Stars publishes only its remaining painted cells as semantic objective observations. These cells are completed with a normal `plant` step using `starfruit`; they are never special-action targets.
+- Portal Combat reports both pairs, including portals at the visible right boundary outside the planting grid. Portal relocation and visible zombies changing rows emit urgent events.
 
 ## Research basis
 
