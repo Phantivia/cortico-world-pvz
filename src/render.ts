@@ -132,12 +132,14 @@ function zombieFlags(zombie: PvzBoardState['zombies'][number]): string[] {
 
 /** 完好的本体、没有的护甲与盾牌不写:一场里几千条僵尸描述,缺省态占字不占信息。 */
 function zombieFacts(zombie: PvzBoardState['zombies'][number]): string {
-  const direction = zombie.speed === 'stationary' ? '静止'
+  const aquarium = zombie.phase?.startsWith('zombiquarium_') ?? false;
+  const direction = aquarium ? '游动' : zombie.speed === 'stationary' ? '静止'
     : zombie.speed === 'retreating' ? '离开房子'
       : zombie.speed === 'airborne' ? '空中移动'
         : '向房子';
   const parts = [`${zombie.speedCellsPerSecond.toFixed(2)}格/秒·${direction}`, zombiePhaseLabel(zombie.phase)];
-  if (zombie.condition !== 'intact') parts.push(`本体${conditionLabel(zombie.condition)}`);
+  if (aquarium && zombie.condition === 'worn') parts.push('饥饿（身体变绿）');
+  else if (zombie.condition !== 'intact') parts.push(`本体${conditionLabel(zombie.condition)}`);
   if (zombie.armor !== 'none') parts.push(`护甲${armorLabel(zombie.armor)}`);
   if (zombie.shield !== 'none') parts.push(`盾牌${armorLabel(zombie.shield)}`);
   parts.push(...zombieFlags(zombie));
@@ -156,6 +158,10 @@ function zombieCellDescription(zombie: PvzBoardState['zombies'][number]): string
 
 function zombiePhaseLabel(phase: string | undefined): string {
   if (!phase || phase === 'unknown') return '状态未知';
+  if (phase === 'zombiquarium_accelerating') return '加速游动';
+  if (phase === 'zombiquarium_drifting') return '漂游';
+  if (phase === 'zombiquarium_turning') return '转向';
+  if (phase === 'zombiquarium_biting') return '进食';
   if (phase === 'walking') return '行进';
   if (phase === 'dying') return '倒下中';
   if (phase === 'burned') return '烧毁中';

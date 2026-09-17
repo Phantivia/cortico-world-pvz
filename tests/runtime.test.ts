@@ -11,6 +11,19 @@ import { PVZ_NATIVE_TERMINAL_RESULT_BUDGET_MS } from '../src/timing.ts';
 
 const runtimes: PvzRuntime[] = [];
 
+it('存档继续菜单没有棋盘时仍以同模式的活动棋盘验证恢复', () => {
+  const before = snapshot({ screen: 'dialog', mode: 23, board: null,
+    menu: [{ id: 'resume', label: 'Resume', enabled: true, x: 400, y: 300, state: null, record: null }],
+  });
+  const after = snapshot({ revision: before.revision + 1, screen: 'board', mode: 23, board: boardState() });
+  expect(verifyAction({ kind: 'menu', target: 'resume' }, before, after)).toEqual(['棋盘已继续']);
+  after.mode = 24;
+  expect(verifyAction({ kind: 'menu', target: 'resume' }, before, after)).toBeNull();
+  after.mode = 23;
+  after.board!.paused = true;
+  expect(verifyAction({ kind: 'menu', target: 'resume' }, before, after)).toBeNull();
+});
+
 it.each([true, false])('选卡动画落定后才确认选择变化（原先选中=%s）', (selected) => {
   const before = snapshot({ screen: 'seed_picker', seedPicker: {
     capacity: 6, selected: selected ? [29] : [], ready: false, previewZombies: [],

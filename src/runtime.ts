@@ -754,7 +754,10 @@ function verifyMenuTarget(target: string, before: PvzSnapshot, after: PvzSnapsho
       : null;
   }
   if (target === 'resume') {
-    return before.board?.paused && after.board && !after.board.paused
+    const resumable = before.board?.paused || before.screen === 'dialog' && before.board === null
+      && before.menu.some(item => item.id === 'resume' && item.enabled);
+    return resumable && before.mode === after.mode && after.screen === 'board'
+      && after.board && !after.board.paused
       ? ['棋盘已继续']
       : null;
   }

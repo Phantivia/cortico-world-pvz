@@ -9,6 +9,32 @@ import {
 } from '../src/events.ts';
 import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
+import { renderSnapshot, renderTacticalSnapshot, compactSnapshot } from '../src/render.ts';
+
+it('水族僵尸变绿报告饥饿，进食恢复体色；游近左侧不产生近屋威胁', () => {
+  const before = snapshot({ screen: 'board', mode: 23, modeName: 'zombiquarium', board: boardState({
+    zombies: [{ id: 1, type: 11, name: 'snorkel_zombie', row: 2, column: 7,
+      columnPosition: 7, xBand: 'far', phase: 'zombiquarium_drifting', speedCellsPerSecond: 0.1,
+      condition: 'intact', armor: 'none', shield: 'none', hypnotized: false, slowed: false, immobilized: false }],
+  }) });
+  const hungry = structuredClone(before);
+  Object.assign(hungry.board!.zombies[0]!, { condition: 'worn', xBand: 'lawn', column: 1, columnPosition: 1 });
+  const events = trackSnapshot(hungry, before);
+  expect(events).toContainEqual(expect.objectContaining({ type: 'pvz.zombie.hunger', urgent: true }));
+  expect(events.some(event => event.type.startsWith('pvz.threat.'))).toBe(false);
+  for (const text of [renderSnapshot(hungry), renderTacticalSnapshot(hungry), JSON.stringify(compactSnapshot(hungry))]) {
+    expect(text).toContain('饥饿（身体变绿）');
+    expect(text).toContain('游动');
+    expect(text).not.toMatch(/向房子|本体轻损/);
+  }
+  expect(trackSnapshot(hungry, hungry).some(event => event.type === 'pvz.zombie.hunger')).toBe(false);
+  const fed = structuredClone(hungry);
+  Object.assign(fed.board!.zombies[0]!, { condition: 'intact', phase: 'zombiquarium_biting' });
+  expect(trackSnapshot(fed, hungry)).toContainEqual(expect.objectContaining({
+    type: 'pvz.zombie.hunger', text: expect.stringContaining('恢复正常体色'), urgent: false,
+  }));
+  expect(renderSnapshot(fed)).toContain('进食');
+});
 
 it('种子拾取与释放报告手持变化，光标移动不重复通知', () => {
   const before = snapshot({ screen: 'board', board: boardState() });

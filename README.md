@@ -151,7 +151,9 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 ## Special-level contracts
 
 - Seed selection and removal settle only after the packet's travel animation ends, so replacement can immediately reselect a removed packet.
+- Resuming a saved minigame is verified when its menu advances to the same mode's active board, including menus that have no board snapshot yet.
 - Invisighoul reports invisible zombie counts and positions as unknown. Its night pool background is separate from a rendered fog mask.
+- Zombiquarium reports the green hunger tint and recovery as events and text state. Swimming across the aquarium does not emit approaching-house threats.
 - Wall-nut Bowling uses conveyor packets and lane launch coordinates; it does not pretend a nut was planted on a grid cell.
 - Slot Machine waits for the roll state to leave its settled value and return before verification. Reel symbols are omitted from plantable cards; usable seeds are collected from the resulting drops.
 - Raining Seeds interacts with the visible usable-packet coin at its real position.
@@ -161,7 +163,7 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 - `pvz_arm` can use `collectible: { kind: "usable_seed" }` to queue one pickup when a visible packet appears. The trigger fires once; the held packet remains available for a later `launch` decision. Collectible conditions also support `minCount` and preserve unknown visibility under darkness or fog.
 - Seed pickup and collectible conditions accept `plant` to select a particular plant's packet. A missing match leaves other packet types untouched; omitting `plant` keeps the any-packet behavior.
 - Vasebreaker never transmits opaque vase contents.
-- Every special-level action ends its skill queue. One vase, roll, gem move, zombie placement, aquarium purchase, onslaught transition, garden action, or cannon shot is observed before another is planned.
+- Vase, roll, gem move, zombie placement, trophy purchase, onslaught transition, garden action, and cannon shot end their skill queue. Bowling and Zombiquarium purchases/feedings may share a finite queue; each step checks current targets and resources and verifies its result before the next step.
 - Beghouled waits for the board to settle after a swap or twist before comparing the matrix and score.
 - Whack-a-Zombie retains the ordinary collect, plant, and shovel surface. A queue that chooses Whack is a dedicated finite six-skill queue: each `all_visible` skill waits for one surfaced batch, freezes up to 32 identities when that skill starts, and issues one native batch; later zombies can only be selected by a later skill. A confirmed hit means the implant observed a body or armor effect, not that the target was defeated. Tactical cues and receipts include resources, cards, playable cells, plants, and the remaining visible targets with their body, armor, and shield condition bands. A support queue may interrupt for expiring sun, or one Whack append queue may be prefetched while the current queue runs; neither the 引擎子进程 nor implant creates additional skills.
 - I Zombie places pseudo-seed zombie cards within the per-level boundary and tracks visible brains eaten.

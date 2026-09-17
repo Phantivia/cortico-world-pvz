@@ -2038,8 +2038,8 @@ function isLifecycleExit(target: string): boolean {
 }
 
 function requiresFreshStateAfter(step: PvzDoStep): boolean {
-  // 投掷坚果既不换画面也不改特殊阶段:带子往前挪一位,盘面照旧,所以一份队列里可以连着丢几颗。
-  if (step.skill === 'special') return step.action !== 'bowling';
+  // 投掷与水族馆的购买、投喂在同一棋盘内逐步核验，可连续执行。
+  if (step.skill === 'special') return !['bowling', 'buy_snorkel', 'drop_brain'].includes(step.action);
   return step.skill === 'interact'
     || step.skill === 'visual_click'
     || step.skill === 'profile_create'

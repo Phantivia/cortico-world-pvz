@@ -313,9 +313,23 @@ export function trackSnapshot(
   }
 
   const oldZombies = new Map((before.board?.zombies ?? []).map((z) => [z.id, z]));
+  if (entityContinuity && after.modeName === 'zombiquarium') {
+    for (const zombie of after.board!.zombies) {
+      const old = oldZombies.get(zombie.id);
+      if (!old || old.condition === zombie.condition ||
+        !zombie.phase?.startsWith('zombiquarium_')) continue;
+      events.push({
+        type: 'pvz.zombie.hunger',
+        text: `[PvZ] ${cellText(zombie.row, zombie.column)}的潜水僵尸${zombie.condition === 'worn'
+          ? '饥饿（身体变绿）' : '恢复正常体色'}。`,
+        urgent: zombie.condition === 'worn',
+        senderKey: 'pvz.zombie',
+      });
+    }
+  }
   const mowerStates = new Map((after.board?.mowers ?? [])
     .map((mower) => [mower.row, mower.state] as const));
-  const newlyClose = entityContinuity ? (after.board?.zombies ?? []).filter((z) => {
+  const newlyClose = entityContinuity && after.modeName !== 'zombiquarium' ? (after.board?.zombies ?? []).filter((z) => {
     const old = oldZombies.get(z.id);
     return z.xBand === 'lawn' && old !== undefined && old.xBand !== 'lawn';
   }) : [];
@@ -347,7 +361,7 @@ export function trackSnapshot(
   }
 
   const bandRank = { lawn: 0, near: 1, mid: 2, far: 3 } as const;
-  const approaching = entityContinuity ? (after.board?.zombies ?? []).filter((z) => {
+  const approaching = entityContinuity && after.modeName !== 'zombiquarium' ? (after.board?.zombies ?? []).filter((z) => {
     const old = oldZombies.get(z.id);
     return old && z.xBand !== 'lawn' && bandRank[z.xBand] < bandRank[old.xBand];
   }) : [];

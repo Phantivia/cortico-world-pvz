@@ -221,8 +221,8 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
     name: 'pvz_do',
     tags: ['act'],
     description: '提交一份有序动作队列并返回任务号。每个响应最多调用一次。'
-      + '确认选卡、收取奖励、界面交互、画面点击与除投掷坚果以外的特殊动作会改变界面或阶段，'
-      + '这类步骤放在队尾，一份队列里只放一个。投掷坚果不改界面，可以连着放几步。',
+      + '确认选卡、收取奖励、界面交互、画面点击与除投掷坚果、水族馆购买僵尸和投喂以外的特殊动作会改变界面或阶段，'
+      + '这类步骤放在队尾，一份队列里只放一个。bowling、buy_snorkel、drop_brain 可以连续多步，每一步都核对当前资源和目标；drop_brain 用 at 指定投喂格，每次花费5阳光，场上最多3个脑子。',
     parameters: {
       type: 'object',
       properties: {

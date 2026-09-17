@@ -408,6 +408,51 @@ describe('PvzWorld 工具流程', () => {
     }
   });
 
+  it('水族馆连续投喂和购买逐步结算阳光，资源不足时停止剩余动作', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 23, modeName: 'zombiquarium',
+      board: boardState({ sun: 115, cards: [], allowedSpecialActions: ['drop_brain', 'buy_snorkel'],
+        special: { phase: 'feeding', settled: true, targets: [
+          { action: 'buy_snorkel', kind: 'cell', id: null, slot: null, row: null, column: null },
+          ...[3, 5, 7].map(column => ({ action: 'drop_brain', kind: 'cell' as const, id: null, slot: null, row: 2, column })),
+        ] },
+      }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'special') return;
+      fake.publish(draft => {
+        const board = draft.board!;
+        if (action.action === 'drop_brain') {
+          board.sun -= 5;
+          board.gridItems.push({ id: board.gridItems.length + 1, kind: 'i_zombie_brain', row: action.row!, column: action.column! });
+        } else if (action.action === 'buy_snorkel') {
+          board.sun -= 100;
+          board.zombies.push({ id: 1, type: 11, name: 'snorkel_zombie', row: 2, column: 5, columnPosition: 5,
+            xBand: 'mid', phase: 'zombiquarium_drifting', speedCellsPerSecond: 0.2,
+            condition: 'intact', armor: 'none', shield: 'none', hypnotized: false, slowed: false, immobilized: false });
+        }
+        if (board.sun < 100) {
+          board.allowedSpecialActions = board.allowedSpecialActions.filter(action => action !== 'buy_snorkel');
+          board.special!.targets = board.special!.targets.filter(target => target.action !== 'buy_snorkel');
+        }
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_do', { steps: [
+        { skill: 'special', action: 'drop_brain', at: { row: 2, column: 3 } },
+        { skill: 'special', action: 'drop_brain', at: { row: 2, column: 5 } },
+        { skill: 'special', action: 'buy_snorkel' },
+        { skill: 'special', action: 'buy_snorkel' },
+        { skill: 'special', action: 'drop_brain', at: { row: 2, column: 7 } },
+      ] })).toContain('已受理');
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task' && event.text.includes('第 4/5 步')), 3000);
+      expect(transport.state.board!.sun).toBe(5);
+      expect(transport.state.board!.gridItems.map(item => item.column)).toEqual([3, 5]);
+      expect(transport.state.board!.zombies).toHaveLength(1);
+      expect(await callTool(world, 'pvz_queue')).toContain('第 4/5 步');
+    } finally { await world.stop(); }
+  });
+
   it('特殊阶段和界面动作在回执前形成技能队列决策屏障', async () => {
     const transport = new FakePvzTransport();
     const { world } = await startWorld(transport);
