@@ -2283,7 +2283,7 @@ bool HasConveyorSeedBank(int mode, int level) {
     if (mode == 0 && (level == 5 || level == 10 || level == 20 || level == 25 ||
                       level == 30 || level == 40 || level == 45 || level == 50)) return true;
     return mode == 17 || mode == 21 || mode == 25 || mode == 26 || mode == 27 ||
-           mode == 33 || mode == 34 || mode == 46 || mode == 48 || mode == 49;
+           mode == 33 || mode == 35 || mode == 46 || mode == 48 || mode == 49;
 }
 
 constexpr bool IsUpgradePlant(int type) {

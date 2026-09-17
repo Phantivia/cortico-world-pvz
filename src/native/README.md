@@ -228,8 +228,9 @@ tree height are not published.
 counter rolls back by any amount. Survival stage initialization resets wave progress without
 rolling back that counter, so stage changes remain within the same board run.
 
-Card `ready` reports cooldown readiness independently from `affordable`. Conveyor cards have a
-null cost and are always affordable; ordinary cards use the live mode-specific price. Survival
+Card `ready` reports cooldown readiness independently from `affordable`. Conveyor cards, including
+Zomboss's Revenge, have a null cost and are always affordable. Pogo Party and other ordinary card
+banks use the live mode-specific price and sun checks. Survival
 Endless adds 50 sun for every existing copy of the raw upgrade card type, matching the game's
 accelerated-pricing routine. An action requires both cooldown readiness and affordability.
 Collection re-reads every requested ID immediately before its click and accepts it only after the

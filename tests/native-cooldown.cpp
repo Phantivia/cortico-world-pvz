@@ -36,4 +36,18 @@ int main() {
     std::string reels;
     AppendCards(reels, board, 18);
     assert(reels == "[]");
+    board.sun = 0;
+    board.cards[0].active = true;
+    board.cards[0].refreshing = false;
+    board.cards[0].refreshCounter = 0;
+    std::string pogo;
+    AppendCards(pogo, board, 34);
+    assert(pogo.find("\"cost\":100") != std::string::npos);
+    assert(pogo.find("\"affordable\":false") != std::string::npos);
+    assert(!CardUsable(board, 34, board.cards[0]));
+    std::string boss;
+    AppendCards(boss, board, 35);
+    assert(boss.find("\"cost\":null") != std::string::npos);
+    assert(boss.find("\"affordable\":true") != std::string::npos);
+    assert(CardUsable(board, 35, board.cards[0]));
 }
