@@ -39,9 +39,37 @@ int main() {
     BoardView view;
     assert(ReadBoard(app.address(), 19, view));
     assert(view.collectibles.size() == 2);
-    assert(view.collectibles[0].type == 16);
-    assert(view.collectibles[1].type == 4);
+    assert(view.collectibles[0].type == 4);
+    assert(view.collectibles[1].type == 16);
     coins.put(0x50, uint8_t{1});
     assert(ReadBoard(app.address(), 19, view = {}));
     assert(view.collectibles.size() == 1 && view.collectibles[0].type == 4);
+
+    board.put(pvz::board::background, 1);
+    board.put(pvz::board::level, 0);
+    coins.put(0x50, uint8_t{0});
+    coin(0, 4, 600001, 19.0f);
+    coin(1, 4, 600001, 26.0f);
+    coin(2, 4, 600001, 64.0f);
+    assert(ReadBoard(app.address(), 30, view = {}));
+    assert(view.collectibles.size() == 3);
+    assert((view.collectibles[0].rawId & 0xFFFFu) == 2);
+    assert((view.collectibles[1].rawId & 0xFFFFu) == 1);
+    auto target = view.collectibles[2];
+    assert(target.hitBottom == 415);
+    assert(CollectibleClickPoint(view.collectibles, target));
+    for (const auto& other : view.collectibles) {
+        if (!CollectibleAbove(other, target)) continue;
+        assert(target.x < other.hitLeft || target.x >= other.hitRight ||
+               target.y < other.hitTop || target.y >= other.hitBottom);
+    }
+    coin(1, 4, 600001, 19.0f);
+    assert(ReadBoard(app.address(), 30, view = {}));
+    target = view.collectibles[2];
+    assert(!CollectibleClickPoint(view.collectibles, target));
+    target = view.collectibles[1];
+    assert(CollectibleClickPoint(view.collectibles, target));
+    coin(2, 19, 600001, 64.0f);
+    assert(ReadBoard(app.address(), 16, view = {}));
+    assert(view.collectibles[0].hitTop == 280 && view.collectibles[0].hitBottom == 350);
 }

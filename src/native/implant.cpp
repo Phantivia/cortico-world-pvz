@@ -2059,7 +2059,48 @@ struct CollectibleView {
     int hitTop;
     int hitRight;
     int hitBottom;
+    int renderOrder;
 };
+
+bool CollectibleAbove(const CollectibleView& a, const CollectibleView& b) {
+    return a.renderOrder > b.renderOrder || (a.renderOrder == b.renderOrder &&
+        (a.rawId & 0xFFFFu) > (b.rawId & 0xFFFFu));
+}
+
+bool CollectibleClickPoint(const std::vector<CollectibleView>& coins, CollectibleView& target) {
+    std::vector<RECT> regions{{std::max(0, target.hitLeft), std::max(0, target.hitTop),
+                              std::min(800, target.hitRight), std::min(600, target.hitBottom)}};
+    for (const auto& coin : coins) {
+        if (!CollectibleAbove(coin, target)) continue;
+        std::vector<RECT> next;
+        for (const auto& r : regions) {
+            const LONG left = std::max(r.left, static_cast<LONG>(coin.hitLeft));
+            const LONG top = std::max(r.top, static_cast<LONG>(coin.hitTop));
+            const LONG right = std::min(r.right, static_cast<LONG>(coin.hitRight));
+            const LONG bottom = std::min(r.bottom, static_cast<LONG>(coin.hitBottom));
+            if (left >= right || top >= bottom) { next.push_back(r); continue; }
+            for (const RECT piece : {RECT{r.left, r.top, r.right, top},
+                    RECT{r.left, bottom, r.right, r.bottom},
+                    RECT{r.left, top, left, bottom}, RECT{right, top, r.right, bottom}}) {
+                if (piece.left < piece.right && piece.top < piece.bottom) next.push_back(piece);
+            }
+        }
+        regions = std::move(next);
+    }
+    int bestDistance = INT_MAX;
+    int bestX = 0, bestY = 0;
+    for (const auto& r : regions) {
+        if (r.left >= r.right || r.top >= r.bottom) continue;
+        const int x = std::clamp(target.x, static_cast<int>(r.left), static_cast<int>(r.right - 1));
+        const int y = std::clamp(target.y, static_cast<int>(r.top), static_cast<int>(r.bottom - 1));
+        const int distance = std::abs(x - target.x) + std::abs(y - target.y);
+        if (distance < bestDistance) { bestDistance = distance; bestX = x; bestY = y; }
+    }
+    if (bestDistance == INT_MAX) return false;
+    target.x = bestX;
+    target.y = bestY;
+    return true;
+}
 
 struct MowerView {
     int row;
@@ -2891,13 +2932,18 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
         const bool aboveFog = Field<int>(item, 0x20) > 500000;
         if (x < 0 || x >= 800 || y < 0 || y >= 600 ||
             (!aboveFog && !FogAllowsZombie(view.address, 0, view.background, x, row))) return;
-        const int hitExtra = type == 4 ? 15 : 0;
+        const bool whack = IsWhackLevel(mode, view.level);
+        const int hitExtra = type == 4 || whack ? 15 : 0;
+        const int hitOffsetY = type == 17 || type == 19 || (type >= 25 && type <= 27) ? -20 : 0;
         const uint32_t publicId = PublicObjectId(
             view.address, view.mainCounter, EntityKind::Collectible, id);
         view.collectibles.push_back({publicId, id, type, Field<int>(item, 0x68), x, y,
-                                     left - hitExtra, top - hitExtra,
-                                     left + width + hitExtra, top + height + hitExtra});
+                                     left - hitExtra, top + hitOffsetY - hitExtra,
+                                     left + width + hitExtra, top + hitOffsetY + height + hitExtra + (whack ? 30 : 0),
+                                     Field<int>(item, 0x20)});
     });
+
+    std::sort(view.collectibles.begin(), view.collectibles.end(), CollectibleAbove);
 
     IterateArray(view.address, pvz::board::mowers, pvz::dataArray::mowerObjectSize,
                  pvz::dataArray::mowerStride, 32,
@@ -6755,6 +6801,7 @@ CollectibleLookup CurrentCollectible(uintptr_t lawnApp, uintptr_t expectedBoard,
         [&](const CollectibleView& value) { return value.id == publicId; });
     if (found == current.collectibles.end()) return CollectibleLookup::Missing;
     target = *found;
+    if (!CollectibleClickPoint(current.collectibles, target)) return CollectibleLookup::Unavailable;
     return CollectibleLookup::Found;
 }
 

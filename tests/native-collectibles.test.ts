@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 import { runPvzNativeBuildScript } from '../src/native-build.ts';
 
-it.runIf(process.platform === 'win32')('native observations retain collectibles drawn above fog', async () => {
+it.runIf(process.platform === 'win32')('native collection preserves visible stacking and avoids covered hit targets', async () => {
   const vswhere = join(process.env['ProgramFiles(x86)'] ?? 'C:/Program Files (x86)',
     'Microsoft Visual Studio/Installer/vswhere.exe');
   expect(existsSync(vswhere), 'Visual Studio x86 Build Tools are required for native fixtures').toBe(true);

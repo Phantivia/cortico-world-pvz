@@ -1,6 +1,8 @@
-# cortico-world-pvz native bridge
+# `src/native/implant.cpp`, `injector.cpp`: native bridge
 
-Owner: `src/native/implant.cpp`, `injector.cpp`
+Collectibles are ordered from the front drawing layer to the back, with later array slots
+winning equal-layer hit tests. Each click uses a current point outside higher collectibles'
+hit rectangles; a fully covered target receives no input until exposed.
 
 This directory builds the 32-bit Windows injector and in-process observation bridge used by
 `cortico-world-pvz`. The DLL communicates through newline-delimited JSON over the named pipe supplied by
