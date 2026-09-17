@@ -10,6 +10,23 @@ import {
 import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
 
+it('种子拾取与释放报告手持变化，光标移动不重复通知', () => {
+  const before = snapshot({ screen: 'board', board: boardState() });
+  const held = structuredClone(before);
+  held.board!.cursor = { kind: 'usable_seed', heldType: 16, logicalX: 320, logicalY: 130 };
+  expect(trackSnapshot(held, before)).toContainEqual(expect.objectContaining({
+    type: 'pvz.cursor.changed', text: '[PvZ] 手持 可用种子包（荷叶）', urgent: true,
+  }));
+  const moved = structuredClone(held);
+  moved.board!.cursor.logicalX += 100;
+  expect(trackSnapshot(moved, held).some(event => event.type === 'pvz.cursor.changed')).toBe(false);
+  const released = structuredClone(moved);
+  released.board!.cursor.kind = 'normal';
+  expect(trackSnapshot(released, moved)).toContainEqual(expect.objectContaining({
+    type: 'pvz.cursor.changed', text: '[PvZ] 手持 无',
+  }));
+});
+
 describe('PvZ 事件驱动唤醒', () => {
   it('对新掉落物、新可见僵尸与逼近分别产生聚合事件', () => {
     const before = snapshot({ screen: 'board', board: boardState({

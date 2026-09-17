@@ -153,7 +153,9 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 - Wall-nut Bowling uses conveyor packets and lane launch coordinates; it does not pretend a nut was planted on a grid cell.
 - Slot Machine waits for the roll state to leave its settled value and return before verification. Reel symbols are omitted from plantable cards; usable seeds are collected from the resulting drops.
 - Raining Seeds interacts with the visible usable-packet coin at its real position.
+- Collectibles drawn above fog remain in observations and can be collected; fog still hides entities drawn beneath it.
 - Slot Machine, Raining Seeds, and Vasebreaker pick up one usable packet at a time, place the held packet, then collect another.
+- Text and compact snapshots name the current minigame and held object. Usable-seed pickup and release emit cursor changes; legal placement cells remain in the special targets, so placement does not require interpreting an image.
 - `pvz_arm` can use `collectible: { kind: "usable_seed" }` to queue one pickup when a visible packet appears. The trigger fires once; the held packet remains available for a later `launch` decision. Collectible conditions also support `minCount` and preserve unknown visibility under darkness or fog.
 - Vasebreaker never transmits opaque vase contents.
 - Every special-level action ends its skill queue. One vase, roll, gem move, zombie placement, aquarium purchase, onslaught transition, garden action, or cannon shot is observed before another is planned.

@@ -8,6 +8,25 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('公开手持种子名称与合法落点，放置后不保留旧的手持信息', () => {
+  const state = snapshot({ screen: 'board', mode: 19, modeName: 'its_raining_seeds', modeKind: 'minigame', board: boardState({
+    cursor: { kind: 'usable_seed', heldType: 16, logicalX: 320, logicalY: 130 },
+    allowedSpecialActions: ['launch'],
+    special: { phase: 'playing', settled: true, targets: [
+      { action: 'launch', kind: 'cell', id: null, slot: null, row: 3, column: 2 },
+    ] },
+  }) });
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('种子雨');
+    expect(rendered).toContain('可用种子包（荷叶）');
+    expect(rendered).toContain('第3排第2列');
+  }
+  state.board!.cursor = { kind: 'normal', heldType: 16, logicalX: 160, logicalY: 300 };
+  expect(renderSnapshot(state)).toContain('手持 无');
+  expect(renderSnapshot(state)).not.toContain('可用种子包（荷叶）');
+  expect(compactSnapshot(state)).toMatchObject({ 棋盘状态: { 手持: '无' } });
+});
+
 function mechanicsCard(type: number, overrides: Partial<PvzCard> = {}): PvzCard {
   return {
     slot: type, type, name: PLANT_NAMES[type] ?? 'unknown', imitates: null, cost: 100,

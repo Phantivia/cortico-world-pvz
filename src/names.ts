@@ -47,14 +47,14 @@ const SPECIAL_ACTION_DISPLAY_NAMES: Readonly<Record<string, string>> = Object.fr
   cob_fire: '玉米炮发射',
   swap: '交换',
   twist: '旋转',
-  launch: '发射',
+  launch: '放置种子包',
   drop_brain: '放置脑子',
   bowling: '投掷坚果',
   place_zombie: '放置僵尸',
   beghouled_buy: '购买升级',
   spin: '转动老虎机',
   start_onslaught: '开始进攻',
-  buy_snorkel: '购买潜水装备',
+  buy_snorkel: '购买潜水僵尸',
   buy_trophy: '购买奖杯',
   zen_water: '浇水',
   zen_fertilize: '施肥',
@@ -73,6 +73,8 @@ export function specialActionDisplayName(action: string): string {
 
 export function specialActionNameOf(value: string): string {
   const original = value.trim();
+  const aliases: Record<string, string> = { 发射: 'launch', 购买潜水装备: 'buy_snorkel' };
+  if (aliases[original]) return aliases[original];
   const match = Object.entries(SPECIAL_ACTION_DISPLAY_NAMES)
     .find(([, display]) => display === original);
   return match?.[0] ?? original.toLowerCase().replace(/[ -]+/g, '_');

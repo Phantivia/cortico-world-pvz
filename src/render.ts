@@ -195,6 +195,12 @@ function modeDisplay(snapshot: PvzSnapshot): string {
   const exact: Record<string, string> = {
     adventure: '冒险', wall_nut_bowling: '坚果保龄球', wall_nut_bowling_2: '坚果保龄球二',
     whack_a_zombie: '锤僵尸', seeing_stars: '种星星', last_stand: '坚守阵地',
+    zom_botany: '植物僵尸', slot_machine: '拉霸机', its_raining_seeds: '种子雨',
+    beghouled: '宝石迷阵', invisighoul: '隐形食脑者', zombiquarium: '僵尸水族馆',
+    beghouled_twist: '宝石迷阵转转看', big_trouble_little_zombie: '小僵尸大麻烦',
+    portal_combat: '传送门之战', column_like_you_see_em: '植物列阵',
+    bobsled_bonanza: '雪橇区', zombie_nimble_zombie_quick: '僵尸快跑',
+    zom_botany_2: '植物僵尸2', pogo_party: '跳跳舞会', dr_zomboss_revenge: '僵王博士的复仇',
     vasebreaker_1: '砸罐子', i_zombie_1: '我是僵尸', zen_garden: '禅境花园',
     tree_of_wisdom: '智慧树',
   };
@@ -474,6 +480,20 @@ function renderMowers(board: PvzBoardState): string {
   return [...ready, ...triggered].join(', ') || '无';
 }
 
+export function cursorDescription(cursor: PvzBoardState['cursor']): string {
+  const labels: Record<string, string> = {
+    normal: '无', plant: '卡片', usable_seed: '可用种子包', glove_plant: '手套中的植物',
+    duplicator: '复制工具', wheelbarrow_plant: '推车中的植物', shovel: '铲子', hammer: '锤子',
+    cob_cannon_target: '玉米炮瞄准', watering_can: '水壶', fertilizer: '肥料',
+    bug_spray: '杀虫剂', phonograph: '唱片机', chocolate: '巧克力', glove: '手套',
+    money_sign: '出售工具', wheelbarrow: '推车', tree_food: '树肥',
+  };
+  const label = labels[cursor.kind] ?? '未知工具';
+  return ['plant', 'usable_seed', 'glove_plant', 'wheelbarrow_plant'].includes(cursor.kind)
+    ? `${label}（${cursor.heldType === null ? '种类未知' : plantDisplayName(cursor.heldType)}）`
+    : label;
+}
+
 function shovelTutorialPhase(phase: NonNullable<PvzBoardState['tutorial']>['phase']): string {
   if (phase === 'pickup') return '拿起铲子';
   if (phase === 'dig') return '铲除植物';
@@ -497,6 +517,7 @@ function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string
     `关卡 ${board.level} · ${modeDisplay(snapshot)} · ${backgroundName(board.background)} · ${board.paused ? '暂停' : '进行中'}`,
     `阳光 ${board.sun} · ${renderProgress(board.progress)}`,
     `卡片 ${board.cards.map((card) => renderedBoardCard(board, card)).join(' ') || '无'}`,
+    `手持 ${cursorDescription(board.cursor)}`,
     ...boardRowLines(board),
     // 僵尸写在棋盘格里;黑暗里棋盘整行不可见,单独说一句
     ...(entitiesVisible ? [] : ['僵尸 黑暗中不可见']),
@@ -650,6 +671,7 @@ function semanticBoard(snapshot: PvzSnapshot, board: PvzBoardState): Record<stri
     进度: renderProgress(board.progress),
     棋盘: semanticBoardMatrix(board),
     卡片: board.cards.map((card) => renderedBoardCard(board, card)),
+    手持: cursorDescription(board.cursor),
     僵尸: visible ? sortedByCell(board.zombies).map(zombieDescription) : '黑暗中不可见',
     收集物: visible ? renderCollectibleCounts(board) : '黑暗中不可见',
     割草机: visible ? renderMowers(board) : '黑暗中不可见',

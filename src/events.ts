@@ -23,6 +23,7 @@ import {
 import {
   collectibleName,
   conditionLabel,
+  cursorDescription,
   mowerName,
   renderSnapshot,
   renderTacticalSnapshot,
@@ -382,6 +383,17 @@ export function trackSnapshot(
       urgent,
       senderKey: 'pvz-collectible',
       ...(!urgent ? { routineKey: `collectible:${semanticKey(names)}` } : {}),
+    });
+  }
+
+  if (sameBoardRun && !runFinished
+    && (before.board!.cursor.kind === 'usable_seed' || after.board!.cursor.kind === 'usable_seed')
+    && cursorDescription(before.board!.cursor) !== cursorDescription(after.board!.cursor)) {
+    events.push({
+      type: 'pvz.cursor.changed',
+      text: `[PvZ] 手持 ${cursorDescription(after.board!.cursor)}`,
+      urgent: after.board!.cursor.kind === 'usable_seed',
+      senderKey: 'pvz.cursor',
     });
   }
 

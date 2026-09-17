@@ -2886,8 +2886,10 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
         const int x = left + width / 2;
         const int y = top + height / 2;
         const int row = std::clamp((y - 80) / 85, 0, 5);
+        // Fog is drawn at render order 500000; packets (500002) and sun (600001) sit above it.
+        const bool aboveFog = Field<int>(item, 0x20) > 500000;
         if (x < 0 || x >= 800 || y < 0 || y >= 600 ||
-            !FogAllowsZombie(view.address, 0, view.background, x, row)) return;
+            (!aboveFog && !FogAllowsZombie(view.address, 0, view.background, x, row))) return;
         const int hitExtra = type == 4 ? 15 : 0;
         const uint32_t publicId = PublicObjectId(
             view.address, view.mainCounter, EntityKind::Collectible, id);
