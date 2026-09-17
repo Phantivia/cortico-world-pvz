@@ -8,6 +8,8 @@ Owner: `src/definition.ts`
 
 The Core mounts `PvzWorldProxy` in the main process. The proxy stays idle until the operator starts the game from its console panel, then forks `engine-child.ts`. The 引擎子进程 owns the native named pipe, game launch, injection, 15 Hz observation, state differencing, semantic task queue, and receipt verification. The x86 implant reads coherent state and sends mouse messages only to the PvZ window.
 
+Commands and captures require both the implant hello and the injector's resumed process identity. Requests made while either is pending fail without sending input or disconnecting the pipe.
+
 The console panel owns both directions: `start` launches, `stop` shuts the 引擎子进程 down, closes the owned game, and releases the persistent lease. Automatic restarts cover exactly one failure — the 引擎子进程 died while the game is still alive — and re-attach through the lease without touching the game. If the owned process itself is gone, the module concludes the operator closed the game: it stops at `stopped`, recycles the lease, and never relaunches. Recovery attempts are capped (4 within a rolling 10 minutes) and the module reports when it gives up.
 
 The main process receives events, deferred board summaries, console status, and requested PNG frames. It does not receive raw memory, hidden entities, or high-frequency coordinates.
@@ -109,7 +111,7 @@ The sweep is an ordinary executor task in the module's own lane: ahead of waitin
 
 Between the steps of a model task the module collects sun inline, before every step but the first. A queue can run for half a minute, and an internal task never preempts one that is executing, so sun that lands mid-queue would otherwise expire before the queue ends. The first step is left alone because it carries the decision the model just made.
 
-The internal cursor is exclusive, so a sweep is armed only on a live, unpaused board whose cursor is free, whose level offers no special actions, and whose run has not settled. A held seed packet, a hammer level, and a paused board therefore keep it out of the way, and the same test runs again when the queued sweep reaches the front and on every later snapshot, so sun held back by a busy cursor is swept as soon as the cursor is free. Sun that vanishes before the click is ordinary; three consecutive failures that are not that publish one `pvz.sun.stuck` event, because a stuck interface is the only case worth a person's or the model's attention.
+The internal cursor is exclusive, so a sweep is armed only on a live, unpaused board whose run has not settled and whose cursor is normal or Whack-a-Zombie's hammer. Special actions and sun collection share the executor; offering a special action does not disable collection. A held seed packet and a paused board keep collection pending. The same check runs when a queued sweep starts and on later snapshots, so collection resumes after the cursor is released. Three consecutive collection failures other than vanished drops publish one `pvz.sun.stuck` event.
 
 ## Tools
 
@@ -149,9 +151,10 @@ For Adventure 1-1, 1-2, and 1-3, submit conditional planting as queued intent an
 ## Special-level contracts
 
 - Wall-nut Bowling uses conveyor packets and lane launch coordinates; it does not pretend a nut was planted on a grid cell.
-- Slot Machine waits for the roll state to leave its settled value and return before verification.
+- Slot Machine waits for the roll state to leave its settled value and return before verification. Reel symbols are omitted from plantable cards; usable seeds are collected from the resulting drops.
 - Raining Seeds interacts with the visible usable-packet coin at its real position.
 - Slot Machine, Raining Seeds, and Vasebreaker pick up one usable packet at a time, place the held packet, then collect another.
+- `pvz_arm` can use `collectible: { kind: "usable_seed" }` to queue one pickup when a visible packet appears. The trigger fires once; the held packet remains available for a later `launch` decision. Collectible conditions also support `minCount` and preserve unknown visibility under darkness or fog.
 - Vasebreaker never transmits opaque vase contents.
 - Every special-level action ends its skill queue. One vase, roll, gem move, zombie placement, aquarium purchase, onslaught transition, garden action, or cannon shot is observed before another is planned.
 - Beghouled waits for the board to settle after a swap or twist before comparing the matrix and score.

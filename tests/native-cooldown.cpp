@@ -33,4 +33,7 @@ int main() {
     board.cards[0].refreshTime = 3000;
     expectCard(260, "27.4", 91, "long");
     expectCard(2090, "9.1", 30, "short");
+    std::string reels;
+    AppendCards(reels, board, 18);
+    assert(reels == "[]");
 }

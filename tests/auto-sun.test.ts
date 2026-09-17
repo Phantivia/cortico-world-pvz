@@ -80,6 +80,45 @@ function collectCalls(transport: FakePvzTransport): number[][] {
 }
 
 describe('PvZ 自动收阳光', () => {
+  it.each(['spin', 'launch', 'onslaught', 'swap'] as const)(
+    '特殊动作 %s 不阻止空闲光标收阳光', async (action) => {
+      const { transport, world } = await start(board({ allowedSpecialActions: [action] }));
+      try {
+        transport.publish((draft) => { draft.board!.collectibles = [sun(1)]; });
+        await waitUntil(() => transport.state.board!.collectibles.length === 0);
+        expect(transport.state.board!.sun).toBe(325);
+      } finally { await world.stop(); }
+    },
+  );
+
+  it('拾取的种子放下前保留阳光，光标释放后收取', async () => {
+    const { transport, world } = await start(board({
+      allowedSpecialActions: ['launch'],
+      cursor: { kind: 'usable_seed', heldType: 0, logicalX: 200, logicalY: 100 },
+      collectibles: [sun(1)],
+    }));
+    try {
+      await afterTimers(40);
+      expect(transport.state.board!.collectibles).toHaveLength(1);
+      transport.publish((draft) => { draft.board!.cursor.kind = 'normal'; });
+      await waitUntil(() => transport.state.board!.collectibles.length === 0);
+      expect(transport.state.board!.sun).toBe(325);
+    } finally { await world.stop(); }
+  });
+
+  it('打僵尸的锤子光标可收阳光，收取不改变光标', async () => {
+    const { transport, world } = await start(board({
+      allowedSpecialActions: ['whack'],
+      cursor: { kind: 'hammer', heldType: null, logicalX: 200, logicalY: 100 },
+    }));
+    try {
+      transport.publish((draft) => { draft.board!.collectibles = [sun(1)]; });
+      await waitUntil(() => transport.state.board!.collectibles.length === 0);
+      expect(transport.state.board!.sun).toBe(325);
+      expect(transport.state.board!.cursor.kind).toBe('hammer');
+    } finally { await world.stop(); }
+  });
+
   it('阳光落到场上就自己收走，模型既不出步骤也不收回执', async () => {
     const { transport, world, host } = await start();
     try {
@@ -181,8 +220,9 @@ describe('PvZ 自动收阳光', () => {
     { label: '光标上拿着东西', board: {
       cursor: { kind: 'usable_seed', heldType: 0, logicalX: 200, logicalY: 100 },
     } },
-    { label: '光标归关卡模式所有', board: {
+    { label: '打僵尸中手持植物', board: {
       allowedSpecialActions: ['whack'],
+      cursor: { kind: 'plant', heldType: 4, logicalX: 200, logicalY: 100 },
       special: { phase: 'ready', settled: true, targets: [] },
     } },
   ])('$label 时不动手', async ({ board: overrides }) => {

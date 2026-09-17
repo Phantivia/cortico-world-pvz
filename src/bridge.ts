@@ -240,6 +240,7 @@ export class PvzNativeBridge extends EventEmitter implements PvzTransport {
   ): Promise<PvzNativeAck> {
     const socket = this.socket;
     if (!socket || socket.destroyed) return Promise.reject(new Error('PvZ 植入件未连接'));
+    if (!this.helloValue) return Promise.reject(new Error('PvZ 植入件握手尚未完成'));
     const command: PvzCommand = {
       type: 'command', protocol: PVZ_NATIVE_PROTOCOL, id, action,
       ...context,
@@ -265,6 +266,7 @@ export class PvzNativeBridge extends EventEmitter implements PvzTransport {
   async capture(timeoutMs = 10_000): Promise<PvzNativeFrame> {
     const socket = this.socket;
     if (!socket || socket.destroyed) throw new Error('PvZ 植入件未连接');
+    if (!this.helloValue) throw new Error('PvZ 植入件握手尚未完成');
     const id = randomUUID();
     const command: PvzCommand = {
       type: 'command', protocol: PVZ_NATIVE_PROTOCOL, id, action: { kind: 'capture' },

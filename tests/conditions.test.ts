@@ -54,6 +54,23 @@ function evaluate(condition: PvzCondition, board = boardState()): boolean | null
 }
 
 describe('PvZ condition parsing', () => {
+  it('counts matching visible collectibles and keeps obscured absence unknown', () => {
+    const condition = parse({ collectible: { kind: 'usable_seed', minCount: 2 } });
+    const board = boardState({ collectibles: [
+      { id: 1, kind: 'usable_seed', containedType: 0, x: 300, y: 200, row: 2, column: 4 },
+      { id: 2, kind: 'sun', x: 400, y: 200, row: 2, column: 5 },
+    ] });
+    expect(evaluate(condition, board)).toBe(false);
+    board.fog.active = true;
+    expect(evaluate(condition, board)).toBeNull();
+    board.collectibles.push({ ...board.collectibles[0]!, id: 3 });
+    expect(evaluate(condition, board)).toBe(true);
+    board.disclosure.entitiesVisible = false;
+    expect(evaluate(condition, board)).toBeNull();
+    expect(parsePvzCondition({ collectible: { kind: '', minCount: 0 } })).toHaveProperty('error');
+    expect(parsePvzCondition({ collectible: { kind: 'usable_seed', minCount: 1.5 } })).toHaveProperty('error');
+  });
+
   it('canonicalizes plant names throughout nested composition without retaining input objects', () => {
     const raw = { all: [
       { card: { plant: ' WALL-NUT ', ready: false } },
@@ -488,7 +505,7 @@ describe('PvZ condition descriptions and schema', () => {
     }
     const variants = parameters.$defs.pvzCondition.oneOf;
     expect(variants.map((variant: { required: string[] }) => variant.required[0]).sort())
-      .toEqual(['all', 'any', 'card', 'cell', 'not', 'sun', 'zombie']);
+      .toEqual(['all', 'any', 'card', 'cell', 'collectible', 'not', 'sun', 'zombie']);
     for (const variant of variants) expect(variant.additionalProperties).toBe(false);
   });
 });

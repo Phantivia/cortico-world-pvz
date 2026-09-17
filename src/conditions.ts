@@ -6,6 +6,7 @@ export type PvzCondition =
   | { sun: { min?: number; max?: number } }
   | { card: { plant: PvzSeedSelector; ready?: boolean; affordable?: boolean } }
   | { cell: { row: number; column: number; layer: 'main' | 'base' | 'pumpkin'; empty: boolean } }
+  | { collectible: { kind: string; minCount?: number } }
   | {
       zombie: {
         /** One row, or several rows whose matches are counted together. */
@@ -28,6 +29,7 @@ const MAX_ROWS = 6;
 const MAX_COLUMNS = 9;
 /** Threshold ceiling, set above the enemy count any lawn holds at once. */
 const MAX_ZOMBIE_COUNT = 50;
+const MAX_COLLECTIBLE_COUNT = 1024;
 // The snapshot protocol includes positions before and beyond the lawn.
 const MIN_POSITION = -2;
 const MAX_POSITION = MAX_COLUMNS + 2;
@@ -100,6 +102,17 @@ export function parsePvzCondition(raw: unknown): ParseResult {
       }
       return { condition: { cell: {
         row: fields.row, column: fields.column, layer: fields.layer, empty: fields.empty,
+      } } };
+    }
+    if (key === 'collectible') {
+      if (!onlyKeys(fields, ['kind', 'minCount'])
+        || typeof fields.kind !== 'string' || !/^[a-z][a-z0-9_]{0,63}$/.test(fields.kind)
+        || ('minCount' in fields && !integer(fields.minCount, 1, MAX_COLLECTIBLE_COUNT))) {
+        return { error: `${at}: 需要掉落物 kind，minCount=1–${MAX_COLLECTIBLE_COUNT}` };
+      }
+      return { condition: { collectible: {
+        kind: fields.kind,
+        ...(fields.minCount === undefined ? {} : { minCount: fields.minCount as number }),
       } } };
     }
     if (key === 'zombie') {
@@ -207,6 +220,11 @@ export function evaluatePvzCondition(
       && (affordable === undefined || card.affordable === affordable));
   }
   if (!board.disclosure.entitiesVisible) return null;
+  if ('collectible' in condition) {
+    const { kind, minCount = 1 } = condition.collectible;
+    const count = board.collectibles.filter((item) => item.kind === kind).length;
+    return count >= minCount ? true : board.fog.active ? null : false;
+  }
   if ('cell' in condition) {
     const { row, column, layer, empty } = condition.cell;
     if (row < 1 || row > board.rows || column < 1 || column > board.columns) return null;
@@ -265,6 +283,9 @@ export function describePvzCondition(condition: PvzCondition): string {
   if ('all' in condition) return `全部满足(${condition.all.map(describePvzCondition).join('；')})`;
   if ('any' in condition) return `任一满足(${condition.any.map(describePvzCondition).join('；')})`;
   if ('not' in condition) return `不满足(${describePvzCondition(condition.not)})`;
+  if ('collectible' in condition) {
+    return `可见掉落物 ${condition.collectible.kind} 至少 ${condition.collectible.minCount ?? 1} 个`;
+  }
   if ('sun' in condition) {
     const { min, max } = condition.sun;
     return `阳光${min === undefined ? '' : ` ≥ ${min}`}${max === undefined ? '' : ` ≤ ${max}`}`;
@@ -323,6 +344,17 @@ export const PVZ_CONDITION_DEFS = {
             ready: { type: 'boolean' }, affordable: { type: 'boolean' },
           },
           anyOf: [{ required: ['ready'] }, { required: ['affordable'] }],
+        } },
+      },
+      {
+        type: 'object', additionalProperties: false, required: ['collectible'],
+        properties: { collectible: {
+          type: 'object', additionalProperties: false, required: ['kind'],
+          description: '可见掉落物达到 minCount（默认1），如 usable_seed 种子包。数量不足且有浓雾时为未知。',
+          properties: {
+            kind: { type: 'string', pattern: '^[a-z][a-z0-9_]{0,63}$' },
+            minCount: { type: 'integer', minimum: 1, maximum: MAX_COLLECTIBLE_COUNT },
+          },
         } },
       },
       {

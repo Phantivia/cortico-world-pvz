@@ -40,6 +40,38 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('种子包出现后触发一次拾取并保持手持，后续新包不会重复触发', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState() }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'collect') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'collectibles_collected' };
+      fake.publish((draft) => {
+        draft.board!.collectibles = draft.board!.collectibles.filter((item) => !action.ids.includes(item.id));
+        draft.board!.cursor = { kind: 'usable_seed', heldType: 0, logicalX: 300, logicalY: 200 };
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      const receipt = await callTool(world, 'pvz_arm', {
+        when: { collectible: { kind: 'usable_seed' } },
+        queue: 'append', steps: [{ skill: 'collect', what: 'usable_seed', until: 'once' }],
+      });
+      expect(receipt).toContain('已武装');
+      transport.publish((draft) => { draft.board!.collectibles = [
+        { id: 7, kind: 'usable_seed', containedType: 0, x: 300, y: 200, row: 2, column: 4 },
+      ]; });
+      await afterTimers(150);
+      expect(transport.state.board!.cursor.kind).toBe('usable_seed');
+      expect(transport.state.board!.collectibles).toEqual([]);
+      transport.publish((draft) => { draft.board!.collectibles.push(
+        { id: 8, kind: 'usable_seed', containedType: 1, x: 400, y: 200, row: 2, column: 5 },
+      ); });
+      await afterTimers(40);
+      expect(transport.state.board!.collectibles.map((item) => item.id)).toEqual([8]);
+      expect(host.events.filter(({ event }) => event.type === 'pvz.trigger')).toHaveLength(1);
+    } finally { await world.stop(); }
+  });
+
   const peashooter = {
     slot: 0, type: 0, name: 'peashooter', imitates: null, cost: 100,
     ready: true, affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0,

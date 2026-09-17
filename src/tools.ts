@@ -149,7 +149,7 @@ const PVZ_STEP_SCHEMA = {
         },
         until: {
           type: 'string', enum: ['once', 'visible_clear'],
-          description: 'visible_clear 持续收集当前可见类别；usable_seed 只允许 once。',
+          description: 'visible_clear 持续收集当前可见类别；usable_seed 只允许 once，拿起后用 special action:launch 放置。可单独拾取后再选落点，或紧跟一个队尾 launch。',
         },
       },
       required: ['skill', 'what'],

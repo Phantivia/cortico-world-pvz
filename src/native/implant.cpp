@@ -4482,6 +4482,10 @@ SeedBankRect ReadSeedBankRect(uintptr_t boardAddress) {
 }
 
 void AppendCards(std::string& output, const BoardView& board, int mode) {
+    if (mode == 18) {
+        output += "[]";
+        return;
+    }
     output.push_back('[');
     for (size_t i = 0; i < board.cards.size(); ++i) {
         const auto& card = board.cards[i];

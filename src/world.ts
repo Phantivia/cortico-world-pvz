@@ -2020,21 +2020,14 @@ export class PvzWorld implements World {
   }
 }
 
-/**
- * 这一刻能不能由 World 自己去点阳光。
- *
- * 内部光标是独占的:光标上拿着种子包、铲子或锤子时,一次自动点击会把模型手里的动作
- * 弄没。特殊动作关卡(锤僵尸、禅境花园、传送带)整关都在争这支光标， World 不插手；
- * 已结算的这一场也不再动手。
- */
+/** 普通光标与打僵尸的锤子可收阳光；收取和特殊动作由同一执行器串行完成。 */
 function sunSweepable(snapshot: PvzSnapshot): snapshot is PvzSnapshot & { board: PvzBoardState } {
   const board = snapshot.board;
   return snapshot.screen === 'board'
     && board !== null
     && !board.paused
-    && board.cursor.kind === 'normal'
-    && board.allowedSpecialActions.length === 0
-    && !isWhackSnapshot(snapshot)
+    && (board.cursor.kind === 'normal'
+      || board.cursor.kind === 'hammer' && isWhackSnapshot(snapshot))
     && snapshot.lastRun?.runId !== board.runId;
 }
 
