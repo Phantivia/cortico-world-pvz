@@ -38,7 +38,7 @@ different layout and fail the hash before any address is used.
 | `implant.cpp` | `pvz-implant.dll`. Repeats the verification in-process, detours `DDInterface::Redraw` and the cursor draw, subclasses the game window, reads game state at the poll rate, serializes snapshots as JSON over the named pipe, executes commands on one action thread, draws the managed pointer. |
 | `relative_plant.h` | The relative-column planting validator (`ValidateRelativePlant`); included by `implant.cpp` after the board readers so fixtures can exercise it. |
 | `json.h` | Minimal JSON writer and scanner used by the implant; no third-party code. |
-| `cursor_companion.h` | Generated sprite data, from [cortico-cursor-companion](https://github.com/Phantivia/cortico-cursor-companion). Build-independent. |
+| `../../cursor-companion/generated/cursor_companion.h` | Generated sprite data, included from the repository's `cursor-companion/` directory. Build-independent. |
 | `implant.def` | The six exports the injector calls: `CorticoPvzSetPipeW`, `CorticoPvzPrepareFocusLossPolicy`, `CorticoPvzPrepareManagedWindow`, `CorticoPvzConfigure`, `CorticoPvzVerifyOwnerW`, `CorticoPvzVerifyBuildW`. |
 | `build.cmd` | Compiles both binaries with the x86 MSVC toolchain (`/std:c++17 /O2 /MT`). |
 

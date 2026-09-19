@@ -24,12 +24,6 @@ included; addresses were re-established against the supported build.
 - [re-plants-vs-zombies](https://github.com/Patoke/re-plants-vs-zombies), CC0
 - [Plants-vs.-Zombies-Online-Battle](https://github.com/Zhuagenborn/Plants-vs.-Zombies-Online-Battle), MIT
 
-## Cursor sprite
-
-`src/native/cursor_companion.h` is generated from
-[cortico-cursor-companion](https://github.com/Phantivia/cortico-cursor-companion), MIT, by the
-same author.
-
 ## This package
 
 MIT, see `LICENSE`. The framework [Cortico](https://github.com/Pal-AI-Lab/Cortico) is MIT as well;

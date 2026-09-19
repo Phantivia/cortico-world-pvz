@@ -35,6 +35,8 @@ The injector and the implant are C++ sources under `src/native/`; nothing prebui
 
 Windows Smart App Control in enforcing mode may block an unsigned locally built injector; the framework's `docs/runtimes.md` describes how to check.
 
+The managed pointer and its pixel companion live in [`cursor-companion/`](cursor-companion/README.md): JSON sources, a generator, and the generated header the implant includes.
+
 ## Configuration
 
 `worlds.pvz` in the deployment's `config.json`; every key is also on the console's configuration page.
