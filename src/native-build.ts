@@ -15,6 +15,8 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const NATIVE_DIR = fileURLToPath(new URL('./native/', import.meta.url));
+/** Included by implant.cpp from outside the native directory; part of the build identity. */
+const COMPANION_HEADER = fileURLToPath(new URL('../cursor-companion/generated/cursor_companion.h', import.meta.url));
 const MANIFEST = 'artifacts.json';
 
 export interface PvzNativeArtifacts {
@@ -36,8 +38,9 @@ function sourceFiles(dir: string): string[] {
 
 function nativeIdentity(): string {
   const hash = createHash('sha256');
-  for (const path of sourceFiles(NATIVE_DIR)) {
-    hash.update(relative(NATIVE_DIR, path).replaceAll('\\', '/'));
+  const inputs = [...sourceFiles(NATIVE_DIR).map((path) => [relative(NATIVE_DIR, path), path]), ['../cursor-companion/generated/cursor_companion.h', COMPANION_HEADER]];
+  for (const [name, path] of inputs) {
+    hash.update(name.replaceAll('\\', '/'));
     hash.update('\0');
     hash.update(readFileSync(path));
     hash.update('\0');

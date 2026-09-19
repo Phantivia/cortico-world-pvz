@@ -1,0 +1,47 @@
+{
+  "name": "cortico managed pointer",
+  "coordinates": "relative to the hotspot (arrow tip); x grows right, y grows down; one unit is one client pixel",
+  "arrow": {
+    "points": [
+      [0, 0],
+      [0, 21],
+      [6, 16],
+      [11, 27],
+      [16, 24],
+      [11, 14],
+      [19, 14]
+    ],
+    "fill": "#ffffff",
+    "outline": "#000000",
+    "outlineWidth": 2
+  },
+  "accent": {
+    "color": "#00eeff",
+    "width": 2,
+    "line": {
+      "from": [2, 5],
+      "to": [3, 15],
+      "pulseExtendsY": true
+    },
+    "pressRing": {
+      "radius": 9,
+      "hollow": true
+    }
+  },
+  "pulse": {
+    "idle": 0,
+    "moving": 1,
+    "pressed": 2,
+    "dragging": 2,
+    "released": "2 for the first 55 ms, then 1"
+  },
+  "companion": {
+    "offset": [20, 20],
+    "note": "drawOffset in sprite/companion.json; the companion sits at the arrow's lower-right and follows the animation frame of the current state"
+  },
+  "edgeFlip": "when the hotspot is within offset + width + motionExtent of the right client edge, x offsets flip sign; same for y at the bottom edge",
+  "preview": {
+    "size": 52,
+    "hotspot": [4, 4]
+  }
+}

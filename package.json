@@ -31,6 +31,7 @@
     "src",
     "dist",
     "scripts",
+    "cursor-companion",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
@@ -38,7 +39,9 @@
   "scripts": {
     "build": "node scripts/build-console.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate:cursor": "node cursor-companion/scripts/generate.mjs",
+    "check:cursor": "node cursor-companion/scripts/generate.mjs --check"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

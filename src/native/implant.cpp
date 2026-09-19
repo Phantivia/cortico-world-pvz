@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include "cursor_companion.h"
+#include "../../cursor-companion/generated/cursor_companion.h"
 #include "json.h"
 #include "profile.h"
 

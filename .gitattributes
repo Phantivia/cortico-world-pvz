@@ -2,3 +2,4 @@
 # native/build.cmd 是操作员在 Windows 上直接跑的。
 * text=auto eol=lf
 *.cmd text eol=crlf
+*.png binary
