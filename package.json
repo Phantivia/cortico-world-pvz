@@ -4,6 +4,10 @@
   "type": "module",
   "description": "Cortico World: the original PopCap Plants vs. Zombies as a semantic, event-driven World — x86 implant, named-pipe bridge, task queue with receipts",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Phantivia/cortico-world-pvz.git"
+  },
   "keywords": [
     "cortico-world",
     "cortico",
@@ -26,7 +30,10 @@
   "files": [
     "src",
     "dist",
-    "README.md"
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "node scripts/build-console.mjs",
