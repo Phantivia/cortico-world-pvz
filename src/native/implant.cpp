@@ -2238,12 +2238,21 @@ bool FogAllowsZombie(uintptr_t board, int mode, int background, int x, int row) 
     return false;
 }
 
+/**
+ * 屋顶由背景决定,不是地格类型。
+ *
+ * 零售版从不写 GRIDSQUARE_HIGH_GROUND(4):Board::SetupBackground 只按 mPlantRow 写 DIRT 与
+ * POOL,PLANTROW_HIGH_GROUND 一次也没赋过值。屋顶关的每一格都是 GRIDSQUARE_GRASS,
+ * 「这一排在屋顶上」全靠 Board::StageHasRoof() 看背景。
+ */
+constexpr bool StageHasRoof(int background) { return background == 4 || background == 5; }
+
 constexpr int IZombieBungeeRow(int background, int x, int y) {
     int bestRow = 0;
     int bestDistance = INT_MAX;
     for (int row = 0; row < 5; ++row) {
         int expectedY = 0;
-        if (background == 4 || background == 5) {
+        if (StageHasRoof(background)) {
             const int slope = x + 40 < 440 ? (440 - (x + 40)) / 4 : 0;
             expectedY = row * 85 + slope + 40;
         } else if (background == 2 || background == 3) {
@@ -2670,7 +2679,7 @@ static_assert(TerminalBoardResultDecision(
 
 void CellCenter(uintptr_t board, int background, int row, int column, int& x, int& y) {
     x = column * 80 + 80;
-    if (background == 4 || background == 5) {
+    if (StageHasRoof(background)) {
         const int slope = column < 5 ? (5 - column) * 20 : 0;
         y = row * 85 + slope + 112;
     } else if (background == 2 || background == 3) {
@@ -4895,8 +4904,10 @@ void AppendCells(std::string& output, const BoardView& board) {
             const PlantView* normal = dynamicVisible ? NormalPlantAt(board, row, column) : nullptr;
             const GridItemView* gridBlocker = dynamicVisible
                 ? BlockingGridItemAt(board, row, column) : nullptr;
-            const char* terrain = square == 1 ? "lawn" : square == 3 ? "water" :
-                                  square == 4 ? "roof" : "unavailable";
+            const bool roof = StageHasRoof(board.background);
+            const char* terrain = square == 3 ? "water" :
+                                  square == 1 || square == 4 ? (roof ? "roof" : "lawn") :
+                                  "unavailable";
             const char* blocker = occupancyUnknown
                                       ? (board.entitiesVisible ? "fog_hidden" : "dark_hidden")
                                       :
@@ -4905,7 +4916,7 @@ void AppendCells(std::string& output, const BoardView& board) {
                                   normal ? "occupied" :
                                   square == 3 && (!base || base->type != 16)
                                        ? "requires_lily_pad" :
-                                  square == 4 && (!base || base->type != 33)
+                                  roof && staticPlayable && (!base || base->type != 33)
                                       ? "requires_flower_pot" : nullptr;
             output += "{\"row\":";
             AppendInt(output, row + 1);
@@ -4934,12 +4945,14 @@ bool CanPlantCardAt(const BoardView& board, const CardView& card, int row, int c
     CellCenter(board.address, board.background, row, column, centerX, centerY);
     const int square = GridSquare(board.address, row, column);
     const int type = card.type == 48 ? card.imitater : card.type;
+    const bool roof = StageHasRoof(board.background);
     if (square != 1 && square != 3 && square != 4) return false;
     if (!board.entitiesVisible ||
         !FogAllowsZombie(board.address, 0, board.background, centerX, row)) {
         if (type == 16 || type == 19 || type == 24) return square == 3;
-        if (type == 33) return square == 4;
-        if (type == 11 || type == 21) return square == 1;
+        if (type == 33) return square != 3;
+        if (type == 11) return square == 1;
+        if (type == 21) return square == 1 && !roof;
         return true;
     }
     if (IceAt(board, row, column)) return false;
@@ -4955,12 +4968,12 @@ bool CanPlantCardAt(const BoardView& board, const CardView& card, int row, int c
     if (type == 16 || type == 19 || type == 24) {
         return square == 3 && !base && !normal;
     }
-    if (type == 33) return square == 4 && !base && !normal && !pumpkin;
-    if (type == 21) return square == 1 && !base && !normal;
+    if (type == 33) return square != 3 && !base && !normal && !pumpkin;
+    if (type == 21) return square == 1 && !roof && !base && !normal;
     if (type == 35) return normal && normal->sleeping;
     if (type == 30) return !pumpkin && (!normal || normal->type != 47) &&
                               (square != 3 || (base && base->type == 16)) &&
-                              (square != 4 || (base && base->type == 33));
+                              (!roof || (base && base->type == 33));
     static constexpr std::array<std::pair<int, int>, 7> upgrades{{
         {40, 7}, {41, 1}, {42, 10}, {44, 39}, {45, 31}, {46, 21}, {43, 16}}};
     const auto upgrade = std::find_if(upgrades.begin(), upgrades.end(),
@@ -4976,7 +4989,7 @@ bool CanPlantCardAt(const BoardView& board, const CardView& card, int row, int c
     }
     if (normal) return false;
     if (square == 3 && (!base || base->type != 16)) return false;
-    if (square == 4 && (!base || base->type != 33)) return false;
+    if (roof && (!base || base->type != 33)) return false;
     return true;
 }
 

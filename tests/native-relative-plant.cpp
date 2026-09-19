@@ -390,10 +390,6 @@ void coordinatesAndCells() {
     f.plant(1, 0, 2, 4);
     assert(validate(cell, reason) && cell.column == 4);
     f.plants.bytes.fill(0);
-    f.square(2, 4, 4);
-    assert(validate(cell, reason) && cell.column == 4);
-    f.plant(0, 33, 2, 4);
-    assert(validate(cell, reason) && cell.column == 5);
     for (int column = 0; column < 5; ++column) f.square(2, column, 2);
     assert(!validate(cell, reason) && reason.find("no cell ahead of the target") != std::string::npos);
     for (int column = 0; column < 5; ++column) f.square(2, column, 1);
@@ -404,6 +400,53 @@ void coordinatesAndCells() {
     f.bank.put(pvz::seedBank::packets + 0x34, 3);
     f.bank.put(pvz::seedBank::packets + 0x4C, 1);
     assert(!validate(cell, reason) && reason.find("already spent") != std::string::npos);
+    {
+        // Roof comes from the background, never from the grid square: retail never writes
+        // GRIDSQUARE_HIGH_GROUND, so every roof cell is GRIDSQUARE_GRASS. A roof cell refuses
+        // the bound plant until a flower pot sits under it, and takes a flower pot itself.
+        Fixture roof;
+        roof.board.put(pvz::board::background, 4);
+        roof.hold();
+        auto roofScope = roof.bind();
+        PlantPlacement roofCell;
+        std::string roofReason;
+        const auto validateRoof = [&] {
+            BoardView board;
+            int x = 0;
+            int y = 0;
+            return ValidateRelativePlant(roofScope, 1, RelativePlantStage::Held, board, roofCell,
+                                         x, y, roofReason);
+        };
+        roof.zput(0, 0x2C, 560.0f);
+        assert(!validateRoof() &&
+               roofReason.find("no cell ahead of the target") != std::string::npos);
+        roof.plant(0, 33, 2, 3);
+        assert(validateRoof() && roofCell.column == 4);
+        roof.plant(1, 33, 2, 4);
+        assert(validateRoof() && roofCell.column == 5);
+    }
+    {
+        // The flower pot itself needs nothing under it: an empty roof cell takes it.
+        Fixture pot;
+        pot.board.put(pvz::board::background, 4);
+        pot.command.expectedCardType = 33;
+        pot.bank.put(pvz::seedBank::packets + 0x34, 33);
+        pot.hold();
+        auto potScope = pot.bind();
+        PlantPlacement potCell;
+        std::string potReason;
+        const auto validatePot = [&] {
+            BoardView board;
+            int x = 0;
+            int y = 0;
+            return ValidateRelativePlant(potScope, 1, RelativePlantStage::Held, board, potCell,
+                                         x, y, potReason);
+        };
+        pot.zput(0, 0x2C, 560.0f);
+        assert(validatePot() && potCell.column == 5);
+        pot.plant(0, 33, 2, 4);
+        assert(validatePot() && potCell.column == 4);
+    }
     std::puts("PASS float coordinates, bounds, layers, bases and cards");
 }
 
