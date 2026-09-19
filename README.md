@@ -2,6 +2,73 @@
 
 `cortico-world-pvz` exposes the original PopCap Plants vs. Zombies as a semantic, event-driven World. The model can operate menus, choose seeds, play ordinary and special levels, and confirm progression without deriving state from pixels.
 
+## Relationship with Cortico
+
+This is an extension package for [Cortico](https://github.com/Pal-AI-Lab/Cortico), declared through the extension contract:
+
+```jsonc
+"cortico": { "kind": "world", "api": 4, "consoleClient": "dist/console.js" }
+```
+
+At runtime it imports the framework as `cortico/<path under src>` (`cortico/world.ts`, `cortico/core/types.ts`, `cortico/paths.ts`); the module hook registered by the framework's `src/extensions/runtime.ts` resolves those specifiers to the framework's own sources, so the extension and the framework share one instance. The package must therefore be `"type": "module"`. The browser side (`src/console/**`) only `import type`s from `cortico/*`.
+
+## Installation
+
+Build the console panel first; `dist/` is not tracked and the console shows an empty PvZ page without it:
+
+```bash
+corepack pnpm install
+corepack pnpm build
+```
+
+Then either install it from the console's extensions page with this directory's absolute path, or run `corepack pnpm add --ignore-workspace <absolute path>` inside `<Cortico>/extensions/`. Restart the whole Cortico process afterwards; World definitions are read at startup.
+
+Windows only. The definition's `preflight` rejects activation on any other platform.
+
+## The game
+
+The game is not part of this package. The operator installs their own copy and points `worlds.pvz.executable` at `PlantsVsZombies.exe`; `main.pak` must sit next to it. Both files are hashed before every launch (`src/fingerprint.ts`) and only the build listed under "Supported build" passes. Adapting the bridge to another build is documented in [`src/native/ADAPTING.md`](src/native/ADAPTING.md).
+
+## Native bridge
+
+The injector and the implant are C++ sources under `src/native/`; nothing prebuilt is downloaded. The World compiles them on the operator's machine with Visual Studio Build Tools (x86 MSVC toolchain) the first time it starts, into `<deployment root>/runtimes/pvz/<source hash>/`, or into `worlds.pvz.nativeBuildDir` when that is set. A rebuild happens when any file under `src/native/` changes. The build directory holds `pvz-injector.exe`, `pvz-implant.dll` and an `artifacts.json` with both hashes; recovery attach refuses artifacts whose hashes no longer match. Details in [`src/native/README.md`](src/native/README.md).
+
+Windows Smart App Control in enforcing mode may block an unsigned locally built injector; the framework's `docs/runtimes.md` describes how to check.
+
+## Configuration
+
+`worlds.pvz` in the deployment's `config.json`; every key is also on the console's configuration page.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Mount the World |
+| `executable` | `""` | Path to `PlantsVsZombies.exe`; surrounding double quotes are stripped |
+| `nativeBuildDir` | `""` | Build output root; empty means `<deployment root>/runtimes/pvz/` |
+| `closeOnStop` | `true` | Close a game the World launched when the World stops |
+| `pollHz` | `15` | Snapshot rate, 10–20 |
+| `cursorDurationMs` | `[80, 280]` | Bounds of one internal cursor leg |
+| `actionTimeoutMs` | `5000` | Causal verification deadline after a terminal native result |
+| `emitBoardDeltas` | `true` | Deliver board change events |
+| `launch`, `attachPid` | `true`, `null` | Recovery attach only; not operator settings |
+
+Ownership records (process id, creation time, owner token, artifact directory) are written under the deployment's data directory, `pvz/ownership/`, and are never logged.
+
+## Console
+
+One panel, `game`: start and stop, phase, process id and the last error detail. Starting compiles the bridge if needed, hashes the game, launches it suspended, injects, restores the 800 × 600 client and reports `running` once the implant's hello arrives.
+
+## Development
+
+`tsconfig.json` (`paths`) and `vitest.config.ts` (`resolve.alias`) point `cortico/*` at `../BOT/src/`, a framework checkout next to this directory; change both when it lives elsewhere.
+
+```bash
+corepack pnpm typecheck
+corepack pnpm test       # 37 files; the ten native fixtures need the x86 MSVC toolchain
+corepack pnpm build      # esbuild → dist/console.js
+```
+
+Tests never start the game. The native fixtures compile `implant.cpp` against fake memory laid out at the profile's offsets; see [`src/native/ADAPTING.md`](src/native/ADAPTING.md) §4.
+
 ## Process boundary
 
 The Core mounts `PvzWorldProxy` in the main process. The proxy stays idle until the operator starts the game from its console panel, then forks `engine-child.ts`. The 引擎子进程 owns the native named pipe, game launch, injection, 15 Hz observation, state differencing, semantic task queue, and receipt verification. The x86 implant reads coherent state and sends mouse messages only to the PvZ window.
@@ -18,7 +85,7 @@ The simulated cursor is game-local. The implant draws a Fitts-scaled asymmetric 
 
 ## Supported build
 
-The first profile is deliberately specific:
+The first profile is deliberately specific; what establishes each value and how to produce a profile for another build is in [`src/native/ADAPTING.md`](src/native/ADAPTING.md).
 
 - profile: `goty-apac-ja-chs-south_sniper`
 - executable SHA-256: `9ba1c9b23ed2b240ad29a54c7b9fd55bcbfac8b7f83ddfac69f7907d7b7198ed`
@@ -193,3 +260,7 @@ The implementation uses public source as behavioral documentation, not as a bina
 - [Plants-vs.-Zombies-Online-Battle](https://github.com/Zhuagenborn/Plants-vs.-Zombies-Online-Battle), MIT: an independent example of x86 DLL injection and in-process hooks for a different game build
 
 Addresses are accepted only after comparison with the locally installed executable. Sources targeting 1.0.0.1051 or the English GOTY build are never used as address fallbacks.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party notices, including the game itself, are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

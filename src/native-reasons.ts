@@ -5,7 +5,7 @@
  * 还得回答第二个问题:这一步对世界做了什么。`FAILED` 的每一条都是「没有生效」;
  * `UNVERIFIABLE` 的每一条是「输入已经进了游戏,效果确证不了」——只有这一类才配叫未验真。
  *
- * 覆盖由 `tests/worlds/pvz/native-reasons.test.ts` 从 `native/*.h`、`implant.cpp` 里逐条抽出比对:
+ * 覆盖由 `tests/native-reasons.test.ts` 从 `native/*.h`、`implant.cpp` 里逐条抽出比对:
  * 原生改一个词,测试红,而不是回执悄悄退回兜底句。
  */
 
