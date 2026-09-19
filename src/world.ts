@@ -1,4 +1,6 @@
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runtimesRoot } from 'cortico/paths.ts';
 import type {
   World,
   WorldHost,
@@ -177,7 +179,7 @@ type BoundConditionalPlantStep = Extract<PvzDoStep, { skill: 'plant' }> & {
 const BOARD_WAKE_INTERVAL_MS = 30_000;
 
 /**
- * 控制台面板的声明:局部 id + 真标题,渲染在 `src/worlds/pvz/console/` 的浏览器扩展里
+ * 控制台面板的声明:局部 id + 真标题,渲染在 `src/console/` 的浏览器扩展里
  * (键就是这里的 id)。代理与开发态截图器共用这一份——面板声明一旦两边不同,扩展
  * 那个键就只在其中一条路上对得上。
  */
@@ -329,7 +331,7 @@ export class PvzWorld implements World {
       attachPid: this.options.cfg.attachPid,
       shutdownOnStop: (this.options.ownedProcess ?? this.options.cfg.launch)
         && this.options.cfg.closeOnStop,
-      buildDir: this.options.cfg.nativeBuildDir,
+      buildDir: this.options.cfg.nativeBuildDir.trim() || join(runtimesRoot(), 'pvz'),
       pollHz: this.options.cfg.pollHz,
       cursorDurationMs: this.options.cfg.cursorDurationMs,
       ...(this.options.ownerToken ? { ownerToken: this.options.ownerToken } : {}),

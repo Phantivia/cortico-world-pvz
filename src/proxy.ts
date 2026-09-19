@@ -13,6 +13,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type {
@@ -40,7 +41,8 @@ import { pvzActionCompletionBudgetMs } from './timing.ts';
 
 const CHILD_ENTRY = fileURLToPath(new URL('./engine-child.ts', import.meta.url));
 const ENV_PROMPT_FILE = fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url));
-const DEFAULT_OWNERSHIP_DIRECTORY = fileURLToPath(new URL('../../../scratch/worlds/pvz-ownership/', import.meta.url));
+/** The definition passes the deployment's data directory; only a proxy built without one lands here. */
+const DEFAULT_OWNERSHIP_DIRECTORY = join(tmpdir(), 'cortico-pvz-ownership');
 const FRAME_TIMEOUT_MS = 15_000;
 const INIT_TIMEOUT_MS = 3 * 60_000;
 const DEFERRED_RENDER_TIMEOUT_MS = 2500;

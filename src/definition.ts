@@ -1,4 +1,5 @@
 import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import type { WorldDefinition } from 'cortico/world.ts';
 import { PVZ_DEFAULTS, normalizePvzExecutablePath, type PvzConfigSection } from './config.ts';
 import { PvzWorldProxy } from './proxy.ts';
@@ -21,5 +22,11 @@ export const PVZ: WorldDefinition<PvzConfigSection> = {
       throw new Error(`游戏程序必须指向 PlantsVsZombies.exe 文件，当前路径是目录: ${executable}`);
     }
   },
-  create: (ctx) => new PvzWorldProxy({ cfg: ctx.cfg, timezone: ctx.timezone, botName: ctx.botName }),
+  // 所有权记录是进程私有的恢复状态,归这份部署的数据目录。
+  create: (ctx) => new PvzWorldProxy({
+    cfg: ctx.cfg,
+    timezone: ctx.timezone,
+    botName: ctx.botName,
+    ownershipDirectory: join(ctx.dataDir, 'pvz', 'ownership'),
+  }),
 };
