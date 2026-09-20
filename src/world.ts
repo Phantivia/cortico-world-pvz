@@ -618,13 +618,13 @@ export class PvzWorld implements World {
       // 触发器打响时直接进执行器,绕过 pvz_do 的受理;传送带的那一张卡在这里就要算上。
       this.requireConveyorCardBudget(
         this.latest?.screen === 'board' ? this.latest.board : null,
-        request.steps,
+        Array.from({ length: request.maxFirings }, () => request.steps).flat(),
       );
-      const trigger = this.triggers.arm(request.condition, request.steps, request.queue, request.expiresInMs);
+      const trigger = this.triggers.arm(request.condition, request.steps, request.queue, request.expiresInMs, request.maxFirings);
       const armed = this.triggers.list().some((item) => item.id === trigger.id);
       return `${armed
         ? `触发器#${trigger.id} 已武装:${describePvzTrigger(trigger)}`
-          + (trigger.expiresAt === null ? '' : `；${Math.round(request.expiresInMs! / 1000)}秒内没打响就撤掉`)
+          + (trigger.expiresAt === null ? '' : `；${Math.round(request.expiresInMs! / 1000)}秒后撤掉剩余次数`)
         : `触发器#${trigger.id} 武装时条件已经成立，当场打响`}\n${this.renderQueueLine()}`;
     }
     if (name === 'pvz_stop') {
@@ -1470,7 +1470,7 @@ export class PvzWorld implements World {
     const admitted = [...steps];
     const pending = conveyorCardDemand(board, [
       ...this.executor.pendingSteps(),
-      ...this.triggers.list().flatMap((trigger) => trigger.steps),
+      ...this.triggers.list().flatMap(trigger => Array.from({ length: trigger.remainingFirings }, () => trigger.steps).flat()),
     ]);
     for (const [key, count] of adding) {
       const inFlight = pending.get(key) ?? 0;

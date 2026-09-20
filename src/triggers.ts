@@ -8,7 +8,7 @@ import type { PvzSnapshot } from './protocol.ts';
 import { describePvzStep, parsePvzDo, parsePvzQueueMode, type PvzDoStep, type PvzQueueMode } from './skills.ts';
 
 /**
- * 触发器:一个条件加一份队列。条件在每份新快照上重判,为真的那一刻把队列交出去,只打一次。
+ * 触发器在条件成真时提交队列，默认一次。有限重复须先观察到条件为假，再次成真才提交。
  * 它不在队列里,不占卡片,不挡任何任务;打响时卡片没准备好,由那份队列自己的 `when` 处理。
  * 绑定武装时的棋盘运行:关卡结束、换棋盘或离开棋盘就撤掉,不带进下一关。
  */
@@ -20,6 +20,9 @@ export interface PvzTrigger {
   scope: { mode: number; runId: number };
   armedAt: number;
   expiresAt: number | null;
+  maxFirings: number;
+  remainingFirings: number;
+  conditionActive: boolean;
 }
 
 export type PvzTriggerOutcome = 'fired' | 'expired' | 'cancelled' | 'invalidated';
@@ -42,9 +45,9 @@ export interface PvzTriggerTableOptions {
 const TERMINAL_SCREENS = new Set(['award', 'defeat', 'main_menu', 'mode_selector', 'seed_picker', 'credits']);
 
 export function parsePvzArm(args: Record<string, unknown>): {
-  condition: PvzCondition; steps: PvzDoStep[]; queue: PvzQueueMode; expiresInMs: number | null;
+  condition: PvzCondition; steps: PvzDoStep[]; queue: PvzQueueMode; expiresInMs: number | null; maxFirings: number;
 } {
-  const extra = Object.keys(args).filter((key) => !['when', 'steps', 'queue', 'expiresInMs'].includes(key));
+  const extra = Object.keys(args).filter((key) => !['when', 'steps', 'queue', 'expiresInMs', 'maxFirings'].includes(key));
   if (extra.length) throw new Error(`pvz_arm 不认识字段:${extra.join('、')}`);
   const condition = parsePvzCondition(args.when);
   if ('error' in condition) throw new Error(`when: ${condition.error}`);
@@ -56,11 +59,17 @@ export function parsePvzArm(args: Record<string, unknown>): {
   if (ttl !== undefined && (typeof ttl !== 'number' || !Number.isInteger(ttl) || ttl < 1000 || ttl > 600_000)) {
     throw new Error('expiresInMs 必须是 1000–600000 的整数');
   }
-  return { condition: condition.condition, steps: steps.steps, queue: queue.mode, expiresInMs: (ttl as number | undefined) ?? null };
+  const maxFirings = args.maxFirings === undefined ? 1 : args.maxFirings;
+  if (typeof maxFirings !== 'number' || !Number.isInteger(maxFirings) || maxFirings < 1 || maxFirings > 16) {
+    throw new Error('maxFirings 必须是 1–16 的整数');
+  }
+  return { condition: condition.condition, steps: steps.steps, queue: queue.mode,
+    expiresInMs: (ttl as number | undefined) ?? null, maxFirings };
 }
 
 export function describePvzTrigger(trigger: PvzTrigger): string {
-  return `${describePvzCondition(trigger.condition)} → ${trigger.steps.map(describePvzStep).join('；')}`;
+  return `${describePvzCondition(trigger.condition)} → ${trigger.steps.map(describePvzStep).join('；')}`
+    + (trigger.maxFirings > 1 ? `；剩余${trigger.remainingFirings}/${trigger.maxFirings}次，每次须条件重新成真` : '');
 }
 
 export class PvzTriggerTable {
@@ -75,6 +84,7 @@ export class PvzTriggerTable {
     steps: PvzDoStep[],
     queue: PvzQueueMode,
     expiresInMs: number | null,
+    maxFirings = 1,
   ): PvzTrigger {
     const snapshot = this.opts.snapshot();
     if (snapshot?.screen !== 'board' || !snapshot.board) {
@@ -89,6 +99,9 @@ export class PvzTriggerTable {
       scope: { mode: snapshot.mode, runId: snapshot.board.runId },
       armedAt: now,
       expiresAt: expiresInMs === null ? null : now + expiresInMs,
+      maxFirings,
+      remainingFirings: maxFirings,
+      conditionActive: false,
     };
     this.triggers.push(trigger);
     this.armTimer();
@@ -126,7 +139,7 @@ export class PvzTriggerTable {
         this.remove(trigger);
         this.opts.report({
           triggerId: trigger.id, outcome: 'expired',
-          text: `触发器#${trigger.id} 到期没打响:${describePvzTrigger(trigger)}`,
+          text: `触发器#${trigger.id} 到期撤掉:${describePvzTrigger(trigger)}`,
         });
         continue;
       }
@@ -138,12 +151,17 @@ export class PvzTriggerTable {
         });
         continue;
       }
-      if (evaluatePvzCondition(trigger.condition, snapshot) !== true) continue;
-      this.remove(trigger);
+      const matched = evaluatePvzCondition(trigger.condition, snapshot);
+      if (matched === false) trigger.conditionActive = false;
+      if (matched !== true || trigger.conditionActive) continue;
+      trigger.conditionActive = true;
+      trigger.remainingFirings -= 1;
+      if (trigger.remainingFirings === 0) this.remove(trigger);
       const receipt = this.opts.fire(trigger);
       this.opts.report({
         triggerId: trigger.id, outcome: 'fired',
-        text: `触发器#${trigger.id} 打响（${describePvzCondition(trigger.condition)}）:${receipt}`,
+        text: `触发器#${trigger.id} 打响（${describePvzCondition(trigger.condition)}）:${receipt}`
+          + (trigger.maxFirings > 1 ? `；剩余${trigger.remainingFirings}次` : ''),
       });
     }
   }

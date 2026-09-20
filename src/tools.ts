@@ -256,7 +256,7 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
   {
     name: 'pvz_arm',
     tags: ['act'],
-    description: '武装一个触发器：条件成立那一刻把 steps 当一份队列提交，只打一次。触发器独立于队列，'
+    description: '武装一个触发器：条件成立那一刻把 steps 当一份队列提交。默认一次；maxFirings 指定有限重复次数，每次须先观察到条件为假，再次成真才打响。触发器独立于队列，'
       + '不占卡片、不挡后面的任务；打响时卡片没准备好，按那份队列自己的 when 处理。'
       + '关卡结束或换棋盘时自动撤掉。撤销用 pvz_stop({triggerId})。',
     parameters: {
@@ -274,7 +274,11 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
         },
         expiresInMs: {
           type: 'integer', minimum: 1000, maximum: 600_000,
-          description: '有效期（毫秒），从武装起算；到期没打响就撤掉。缺省到本关结束。',
+          description: '有效期（毫秒），从武装起算；到期撤掉剩余次数。缺省到本关结束。',
+        },
+        maxFirings: {
+          type: 'integer', minimum: 1, maximum: 16,
+          description: '最多触发次数，缺省1。连续为真只触发一次；后续须条件先为假再为真。传送带按全部剩余次数核算卡数。动作失败也用掉本次次数。',
         },
       },
       required: ['when', 'steps'],

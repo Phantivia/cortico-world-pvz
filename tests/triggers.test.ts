@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PvzExecutor, renderPvzQueue, type PvzTaskReport } from '../src/executor.ts';
 import { parsePvzDo, type PvzDoStep } from '../src/skills.ts';
 import { afterTimers, boardState, callTool, FakePvzTransport, snapshot, startWorld } from './helpers.ts';
+import { parsePvzArm, PvzTriggerTable } from '../src/triggers.ts';
 
 afterEach(() => vi.useRealTimers());
 
@@ -40,6 +41,71 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('uses exactly two conveyor packets across two thaws and leaves the third packet unused', async () => {
+    const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
+      affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+      x: 150, y: 40 };
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
+      board: boardState({ background: 5, boss: { phase: 'boss_aiming', immobilized: true, projectile: null },
+        cards: [card, { ...card, slot: 1 }, { ...card, slot: 2 }],
+      }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => {
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+        draft.board!.boss!.immobilized = true;
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      const args = { when: { boss: { vulnerable: true, immobilized: false } },
+        steps: [{ skill: 'plant', plant: 'ice_shroom', row: 2, column: 3 }], maxFirings: 4 };
+      expect(await callTool(world, 'pvz_arm', args)).toContain('此刻有 3 张，这次要 4 张');
+      expect(await callTool(world, 'pvz_arm', { ...args, maxFirings: 2 })).toContain('剩余2/2次');
+      for (const remaining of [2, 1]) {
+        transport.publish(draft => { draft.board!.boss!.immobilized = false; });
+        await afterTimers(150);
+        expect(transport.state.board!.cards).toHaveLength(remaining);
+        expect(transport.state.board!.boss!.immobilized).toBe(true);
+        transport.publish(() => {});
+        await afterTimers(30);
+        expect(transport.state.board!.cards).toHaveLength(remaining);
+      }
+      transport.publish(draft => { draft.board!.boss!.immobilized = false; });
+      await afterTimers(30);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      expect(await callTool(world, 'pvz_queue')).not.toContain('待触发');
+      expect(host.events.filter(({ event }) => event.type === 'pvz.trigger'))
+        .toHaveLength(2);
+    } finally { await world.stop(); }
+  });
+
+  it('keeps a repeated condition latched across true and unknown observations and cancels it on a new run', () => {
+    const state = snapshot({ screen: 'board', board: boardState({ sun: 100 }) });
+    let fires = 0;
+    const table = new PvzTriggerTable({ snapshot: () => state, nextId: () => 1,
+      fire: () => String(++fires), report: () => {} });
+    table.arm({ sun: { min: 50 } }, [collect], 'append', null, 3);
+    table.evaluate(state);
+    table.evaluate(null);
+    table.evaluate(state);
+    expect(fires).toBe(1);
+    state.board!.sun = 25; table.evaluate(state);
+    state.board!.sun = 100; table.evaluate(state);
+    expect(fires).toBe(2);
+    state.board!.runId += 1; table.evaluate(state);
+    expect(table.list()).toEqual([]);
+    expect(fires).toBe(2);
+  });
+
+  it.each([0, 17, 1.5, null, '2'])('rejects invalid maxFirings %j', maxFirings => {
+    expect(() => parsePvzArm({ when: { sun: { min: 50 } }, steps: [collect], maxFirings }))
+      .toThrow('maxFirings');
+  });
+
   it('executes one chosen action when an exposed boss thaws, with no repeated response', async () => {
     const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
       board: boardState({ background: 5, boss: { phase: 'boss_aiming', immobilized: true, projectile: null },
@@ -233,7 +299,7 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
     const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: board() }));
     const { world, host } = await startWorld(transport);
     try {
-      expect(await callTool(world, 'pvz_arm', arm({ expiresInMs: 1000 }))).toContain('1秒内没打响就撤掉');
+      expect(await callTool(world, 'pvz_arm', arm({ expiresInMs: 1000 }))).toContain('1秒后撤掉剩余次数');
       expect(await callTool(world, 'pvz_arm', arm({ when: { sun: { min: 1000 } } }))).toContain('触发器#2 已武装');
       expect(await callTool(world, 'pvz_stop', { triggerId: 2 })).toContain('已撤掉触发器#2');
       expect(await callTool(world, 'pvz_stop', { triggerId: 2 })).toContain('触发器#2已打响、到期或不存在');
