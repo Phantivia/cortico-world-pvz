@@ -2460,6 +2460,7 @@ function isTransientConveyorPlantRejection(receipt: PvzActionReceipt): boolean {
     'planting seed packet is not active in the seed bank',
     'seed bank packet identity could not be verified',
     'failed to post seed-bank selection input',
+    'selected seed packet did not enter the planting cursor',
   ].includes(item));
 }
 

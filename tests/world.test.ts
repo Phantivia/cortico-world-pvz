@@ -1215,7 +1215,10 @@ describe('PvzWorld 工具流程', () => {
     }
   });
 
-  it('传送带卡位短暂变化时按植物语义重选并有界重试', async () => {
+  it.each([
+    'planting slot does not hold the plant the action asked for',
+    'selected seed packet did not enter the planting cursor',
+  ])('传送带选卡失败时按植物语义重选并有界重试: %s', async reason => {
     const transport = new FakePvzTransport(snapshot({
       screen: 'board', scene: 3, mode: 0, menu: [],
       board: boardState({
@@ -1232,7 +1235,7 @@ describe('PvzWorld 工具流程', () => {
       attempts += 1;
       if (attempts === 1) {
         fake.nativeResult = {
-          outcome: 'rejected', reason: 'planting slot does not hold the plant the action asked for',
+          outcome: 'rejected', reason,
         };
         setTimeout(() => fake.publish((draft) => {
           draft.board!.cards[0]!.slot = 1;
@@ -1266,6 +1269,31 @@ describe('PvzWorld 工具流程', () => {
     } finally {
       await world.stop();
     }
+  });
+
+  it.each([
+    ['selected seed packet did not enter the planting cursor', 2],
+    ['seed packet was not observed being consumed by the requested planting input', 1],
+  ] as const)('limits native planting attempts to %s: %i', async (reason, attempts) => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState({
+      cards: [{ slot: 0, type: 0, name: 'peashooter', imitates: null, cost: null,
+        ready: true, affordable: true, cooldown: 'ready', cooldownRemainingPercent: 0,
+        cooldownRemainingSeconds: 0, x: 80, y: 40 }],
+    }) }));
+    transport.nativeResult = { outcome: 'rejected', reason };
+    transport.actionHandler = (_action, fake) => {
+      setTimeout(() => fake.publish(() => {}), 5);
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', {
+        steps: [{ skill: 'plant', plant: 'peashooter', row: 2, column: 2 }],
+      });
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'));
+      expect(transport.commands.filter(action => action.kind === 'plant')).toHaveLength(attempts);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      expect(transport.state.board!.plants).toEqual([]);
+    } finally { await world.stop(); }
   });
 
   it('传送带按同类卡在带子上的张数算预算：四颗坚果就能一次排三次投掷', async () => {
