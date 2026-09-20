@@ -242,7 +242,8 @@ function menuAnnotation(action: PvzSnapshot['menu'][number]): string {
 
 function renderedMenuAction(action: PvzSnapshot['menu'][number]): string {
   const target = semanticMenuTarget(action);
-  const label = target === action.label ? '' : `[${action.label}]`;
+  const text = action.label === 'Continue Dave dialogue' ? '继续戴夫对话' : action.label;
+  const label = target === text ? '' : `[${text}]`;
   const annotation = menuAnnotation(action) || (action.enabled ? '' : '(锁定)');
   return `${target}${label}${annotation}`;
 }

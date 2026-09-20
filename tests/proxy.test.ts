@@ -10,7 +10,7 @@ import type {
   HostRequest,
 } from '../src/engine-ipc.ts';
 import { PvzWorldProxy, toolRpcTimeoutMs } from '../src/proxy.ts';
-import { FakePvzHost } from './helpers.ts';
+import { FakePvzHost, FakePvzTransport, snapshot, startWorld } from './helpers.ts';
 
 interface ProxyInternals {
   host: WorldHost | null;
@@ -165,6 +165,29 @@ describe('PvZ 引擎子进程 代理生命周期', () => {
       'pvz_stop',
       'pvz_glance',
     ]);
+  });
+
+  it('delivers the current semantic menu with the captured pixels to a visual model', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'dialog', menu: [
+      { id: 'advance', label: 'Continue Dave dialogue', enabled: true, x: 400, y: 300, state: null, record: null },
+    ] }));
+    const { world } = await startWorld(transport);
+    const { proxy, inner, host } = makeProxy();
+    const sent: Array<Record<string, unknown>> = [];
+    const child = fakeChild(sent);
+    inner.child = child; inner.generation = 1; inner.ready = true;
+    host.modelFacts.accepts = () => true;
+    try {
+      const pending = proxy.tools().find(tool => tool.name === 'pvz_glance')!.handler({}, { role: 'test', log: host.log });
+      const frame = await world.photoFrame();
+      const request = sent.at(-1) as { id: number };
+      await inner.onMessage({ t: 'rep', id: request.id, ok: true, value: frame }, child, 1);
+      const reply = await pending;
+      if (typeof reply === 'string') throw new Error(reply);
+      expect(reply.text).toContain('advance[继续戴夫对话]');
+      expect(reply.text).toContain(`r${transport.state.revision}`);
+      expect(reply.blobs?.[0]).toMatchObject({ bytes: Buffer.from(frame.frameBase64, 'base64') });
+    } finally { await world.stop(); }
   });
 
   it('入队调用使用短 RPC 死线，停止操作为原生取消栅栏预留时间', () => {

@@ -878,7 +878,7 @@ export class PvzWorldProxy implements World {
     if (!host) return '[pvz_glance 失败] 宿主未连接';
     const frame = await this.rpc({ kind: 'photo-frame' }, FRAME_TIMEOUT_MS) as PvzPhotoFrameReply;
     const bytes = Buffer.from(frame.frameBase64, 'base64');
-    return { text: '', blobs: [{ bytes, mime: frame.mime, fallbackText: frame.text }] };
+    return { text: frame.text, blobs: [{ bytes, mime: frame.mime, fallbackText: frame.text }] };
   }
 
   private gamePanelState(): PvzGamePanelState {

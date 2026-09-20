@@ -439,7 +439,7 @@ export class PvzWorld implements World {
       mime: frame.mime,
       width: frame.width,
       height: frame.height,
-      text: `PvZ 窗口画面 ${frame.width}×${frame.height}；语义状态仍以 pvz_observe 为准。`,
+      text: `PvZ 窗口画面 ${frame.width}×${frame.height}；截图返回时的语义状态：\n${renderSnapshot(after, 'summary')}`,
     };
   }
 
