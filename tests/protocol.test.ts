@@ -142,7 +142,7 @@ describe('PvZ 原生协议边界', () => {
         zombies: [{
           id: 9, type: 4, name: 'buckethead', row: 2, column: 6,
           columnPosition: 5.7, xBand: 'mid', speedCellsPerSecond: 0.07,
-          speed: 'slow', phase: 'walking', condition: 'intact', armor: 'intact',
+          speed: 'slow', phase: 'walking', eating: false, condition: 'intact', armor: 'intact',
           shield: 'none', hypnotized: false, slowed: true, immobilized: false,
         }],
       }),
@@ -155,7 +155,7 @@ describe('PvZ 原生协议边界', () => {
       snapshot: {
         board: {
           cards: [{ cooldownRemainingPercent: 47, cooldownRemainingSeconds: 3.8 }],
-          zombies: [{ columnPosition: 5.7, speedCellsPerSecond: 0.07 }],
+          zombies: [{ columnPosition: 5.7, speedCellsPerSecond: 0.07, eating: false }],
         },
       },
     });

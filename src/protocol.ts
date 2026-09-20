@@ -101,6 +101,8 @@ export interface PvzZombie {
   speedCellsPerSecond: number;
   /** Visible animation/behavior phase, without internal counters or hidden targets. */
   phase?: string;
+  /** Visible chewing animation, independent of the movement phase. */
+  eating?: boolean;
   condition: PvzCondition;
   armor: PvzCondition | 'none' | 'lost';
   shield: PvzCondition | 'none' | 'lost';
@@ -897,6 +899,7 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
       || Number(zombie.speedCellsPerSecond) < 0
       || Number(zombie.speedCellsPerSecond) > 20
       || !(zombie.phase === undefined || text(zombie.phase, 128))
+      || !(zombie.eating === undefined || typeof zombie.eating === 'boolean')
       || !CONDITIONS.has(zombie.condition as PvzCondition)
       || !['none', 'lost', ...CONDITIONS].includes(zombie.armor as string)
       || !['none', 'lost', ...CONDITIONS].includes(zombie.shield as string)
@@ -904,7 +907,7 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
       || typeof zombie.immobilized !== 'boolean') throw new Error('snapshot.zombie 字段无效');
     exactKeys(zombie, [
       'id', 'type', 'name', 'row', 'column', 'columnPosition', 'xBand',
-      'speed', 'speedCellsPerSecond', 'phase',
+      'speed', 'speedCellsPerSecond', 'phase', 'eating',
       'condition', 'armor', 'shield',
       'hypnotized', 'slowed', 'immobilized',
     ], 'snapshot.zombie');

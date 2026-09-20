@@ -151,7 +151,10 @@ function zombieFacts(zombie: PvzBoardState['zombies'][number]): string {
     : zombie.speed === 'retreating' ? '离开房子'
       : zombie.speed === 'airborne' ? '空中移动'
         : '向房子';
-  const parts = [`${zombie.speedCellsPerSecond.toFixed(2)}格/秒·${direction}`, zombiePhaseLabel(zombie.phase)];
+  const phase = zombiePhaseLabel(zombie.phase);
+  const activity = zombie.eating && phase === '行进' ? '啃食中' : phase;
+  const parts = [`${zombie.speedCellsPerSecond.toFixed(2)}格/秒·${direction}`, activity];
+  if (zombie.eating && activity !== '啃食中' && activity !== '进食') parts.push('啃食中');
   if (aquarium && zombie.condition === 'worn') parts.push('饥饿（身体变绿）');
   else if (zombie.condition !== 'intact') parts.push(`本体${conditionLabel(zombie.condition)}`);
   if (zombie.armor !== 'none') parts.push(`护甲${armorLabel(zombie.armor)}`);

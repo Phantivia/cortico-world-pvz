@@ -114,7 +114,7 @@ Visible mowers distinguish ready, triggered and squished states. A squished mowe
 - Vase contents appear only after the game's transparency state makes them visible.
 - Entity health is reduced to sprite-readable condition bands.
 - Every disclosed plant includes its cell, condition, and semantic phase. Arming plants such as Potato Mine expose the phase visible to a player.
-- Every disclosed zombie includes its cell, condition, semantic phase, and speed band.
+- Every disclosed zombie includes its cell, condition, semantic phase, chewing state, and speed band. Chewing is independent of the phase; a walking phase with an active chewing animation renders as eating.
 - Card cooldown seconds and percentages report the remaining recharge interval, computed from the total duration minus elapsed recharge ticks.
 - The seed-picker may expose the preview roster because the game shows it to the player; the same pre-spawned entities are omitted after play begins.
 

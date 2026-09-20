@@ -36,6 +36,21 @@ it('distinguishes an available pole, an active vault, and a spent pole', () => {
   expect(zombiePhaseLabel('pole_vault_spent')).toBe('已丢杆，不能再跳');
 });
 
+it('reports chewing without describing a stationary walking-phase zombie as walking', () => {
+  const state = snapshot({ screen: 'board', board: boardState({ zombies: [{
+    id: 1, type: 0, name: 'zombie', row: 2, column: 3, columnPosition: 3.1,
+    xBand: 'near', speed: 'stationary', speedCellsPerSecond: 0, phase: 'walking',
+    eating: true, condition: 'intact', armor: 'none', shield: 'none',
+    hypnotized: false, slowed: false, immobilized: false,
+  }] }) });
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('0.00格/秒·静止，啃食中');
+    expect(rendered).not.toContain('行进');
+  }
+  state.board!.zombies[0]!.phase = 'pole_vault_spent';
+  expect(renderSnapshot(state)).toContain('已丢杆，不能再跳，啃食中');
+});
+
 it('renders vase markings and only disclosed contents across observation surfaces', () => {
   const state = snapshot({ screen: 'board', mode: 51, modeKind: 'vasebreaker', board: boardState({
     gridItems: [

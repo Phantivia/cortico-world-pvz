@@ -4709,6 +4709,8 @@ void AppendZombies(std::string& output, const BoardView& board) {
         AppendString(output, band);
         output += ",\"phase\":";
         AppendString(output, ZombiePhaseName(zombie.phase));
+        output += ",\"eating\":";
+        AppendBool(output, zombie.eating);
         output += ",\"speed\":";
         AppendString(output, speed);
         output += ",\"speedCellsPerSecond\":";

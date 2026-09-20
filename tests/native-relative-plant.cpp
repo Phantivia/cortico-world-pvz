@@ -315,6 +315,18 @@ void selection() {
     f.zombie(7, 400.0f);
     f.zput(7, 0xC8, 0);
     assert(f.bind().targetId == 0x10002);
+    for (uint8_t eating : {uint8_t{0}, uint8_t{1}}) {
+        f.zput(2, 0x51, eating);
+        const auto view = f.read();
+        std::string json;
+        AppendZombies(json, view);
+        const auto start = json.find("\"id\":65538,");
+        assert(start != std::string::npos);
+        const auto entry = json.substr(start, json.find('}', start) - start);
+        assert(entry.find(eating ? "\"eating\":true" : "\"eating\":false") != std::string::npos);
+        assert(entry.find(eating ? "\"speed\":\"stationary\"" : "\"speed\":\"normal\"") != std::string::npos);
+    }
+    f.zput(2, 0x51, uint8_t{0});
     RelativePlantScope scope;
     std::string reason;
     const auto bindFails = [&] {
