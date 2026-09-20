@@ -26,7 +26,9 @@
 
 种子包救急的 `launch` 也可用 `placement:{row,aheadOf:"nearest_hostile",minGap:1}`：按执行前可见快照，从指定排最近存活敌对僵尸所在格往屋方向数 minGap 格起，找第一个当前可放的格，起点最少为第1列；没有可见敌人或落点则受阻。用于窝瓜等需要靠近敌人的种子包时，可避免仍按较早的快照写死落点。植物种类、排和间隔由你选择。
 
-小丑爆炸会破坏附近植物，并打开周围一圈罐子，可能继续引发爆炸和多排突进。开罐前可预先安排种子包救急，例如 `pvz_arm({when:{all:[{collectible:{kind:"usable_seed",plant:"squash"}},{zombie:{row:2,maxColumn:4}}]},steps:[{skill:"collect",what:"usable_seed",plant:"squash"},{skill:"special",action:"launch",placement:{row:2,aheadOf:"nearest_hostile",minGap:1}}],queue:"append",maxFirings:8})`。这会在可见窝瓜包和该排近敌同时出现时，按声明的步骤拿起并放置；选择哪些排、列界限和次数由你按防线决定。种子包不预留，其他队列可先取走；已手持同种包时命名拾取可直接继续，手持其他种类则停止，不能把它当作窝瓜。多个预设争用同一包时，后续动作可能因缺包失败，需按回执调整。
+小丑爆炸会破坏附近植物，并打开周围一圈罐子，可能继续引发爆炸和多排突进。开罐前可预先安排种子包救急，例如 `pvz_arm({when:{all:[{collectible:{kind:"usable_seed",plant:"squash"}},{zombie:{row:2,maxColumn:4}}]},steps:[{skill:"collect",what:"usable_seed",plant:"squash"},{skill:"special",action:"launch",placement:{row:2,aheadOf:"nearest_hostile",minGap:1}}],queue:"append",maxFirings:8})`。这会在可见窝瓜包和该排近敌同时出现时，按声明的步骤拿起并放置；选择哪些排、列界限和次数由你按防线决定。
+
+防线也可提前安排：把命名种子包出现与选定格 `cell:{row,column,layer:"main",empty:true}` 合成条件，步骤用命名 collect 和该格 launch，种子掉出后就按你的计划部署。高坚果会截住跳跳僵尸，使后排植物有时间攻击；可用这种预设补充已空缺的防线，避免整批种子在下一轮思考时过期。种子包不预留，多个预设可能争用同一包；命名拾取会复用手持的同种包，遇到其他种类则停止。并行保留的预设用 queue:"append"；queue:"now" 会取消正在执行的任务，包括尚未完成的拾取和放置，只有确实需要抢占时才用。缺包或放置失败看回执后调整。
 
 地刺持续伤害与它接触的地面僵尸，自己不拦路；走过一株地刺不保证被消灭。坚果与地刺要在同排配合：在敌人到达前，坚果放靠屋一侧，地刺紧贴它右边，可让僵尸啃坚果时留在地刺伤害范围内。先把已有植物集中成一排有持续伤害的防线，再在它覆盖的范围取罐；得到多余支援后再扩展到其他排。每排只有一株地刺或坚果时，多排一起放敌人容易来不及补齐。观察地刺的攻击状态与敌人的本体、护甲损伤，判断是否已有持续伤害；坚果单独只能拖延。窝瓜可处理尚未形成这种配合的排或高血量敌人，开新罐前仍要检查现有威胁。
 

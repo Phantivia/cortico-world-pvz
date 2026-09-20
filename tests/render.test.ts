@@ -23,7 +23,7 @@ it('visible seed packets carry their localized names, direction, and activation 
     expect(rendered).toContain('土豆雷；种下后准备较久；一次性');
     expect(rendered).toContain('火炬树桩；点燃穿过本格的豌豆，自身不攻击');
     expect(rendered).toContain('磁力菇；白天入睡，需咖啡豆唤醒；吸走附近金属装备，自身不攻击');
-    expect(rendered).toContain('高坚果；阻挡并拦截撑杆跳跃');
+    expect(rendered).toContain('高坚果；阻挡并拦截撑杆和跳跳僵尸的跳跃');
     expect(rendered).toContain('地刺；只伤害踩在本格的地面敌人，不阻挡');
     expect(rendered).toContain('地刺王；只伤害踩在本格的地面敌人，不阻挡');
     expect(rendered).toContain('三线射手；向较大列号射击，覆盖本排和相邻排');
@@ -51,6 +51,15 @@ it('reports chewing without describing a stationary walking-phase zombie as walk
   }
   state.board!.zombies[0]!.phase = 'pole_vault_spent';
   expect(renderSnapshot(state)).toContain('已丢杆，不能再跳，啃食中');
+  state.board!.zombies[0]!.eating = false;
+  state.board!.zombies[0]!.type = 15;
+  state.board!.zombies[0]!.name = 'jack_in_the_box';
+  state.board!.zombies[0]!.phase = 'jack_running';
+  expect(renderSnapshot(state)).toContain('持盒行进');
+  state.board!.zombies[0]!.phase = 'jack_popping';
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('盒子弹开，即将爆炸');
+  }
 });
 
 it('renders vase markings and only disclosed contents across observation surfaces', () => {

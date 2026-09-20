@@ -81,7 +81,7 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
   if (mechanics.effect === 'hypnotize_biting_zombie') facts.push('被吃后魅惑咬它的僵尸');
   if (mechanics.effect === 'remove_metal_equipment') facts.push('吸走附近金属装备，自身不攻击');
   if (mechanics.effect === 'convert_passing_peas_to_fire') facts.push('点燃穿过本格的豌豆，自身不攻击');
-  if (mechanics.effect === 'high_health_block_and_stop_vaulting') facts.push('阻挡并拦截撑杆跳跃');
+  if (mechanics.effect === 'high_health_block_and_stop_vaulting') facts.push('阻挡并拦截撑杆和跳跳僵尸的跳跃');
   if (mechanics.effect === 'wake_sleeping_mushroom') facts.push('唤醒睡眠蘑菇');
   if (mechanics.effect === 'freeze_then_slow_zombies') facts.push('冻结全场后减速');
   if (mechanics.effect === 'damage_row_and_remove_ice_trails') facts.push('整排伤害并清冰道');
@@ -193,6 +193,8 @@ export function zombiePhaseLabel(phase: string | undefined): string {
   if (phase === 'pole_vault_ready') return '持杆，可跳跃';
   if (phase === 'pole_vaulting') return '正在撑杆跳跃';
   if (phase === 'pole_vault_spent') return '已丢杆，不能再跳';
+  if (phase === 'jack_running') return '持盒行进';
+  if (phase === 'jack_popping') return '盒子弹开，即将爆炸';
   if (phase.startsWith('snorkel_')) return '潜水动作中';
   if (phase.startsWith('dolphin_')) return '海豚动作中';
   if (phase.startsWith('pogo_')) return '跳跃中';
