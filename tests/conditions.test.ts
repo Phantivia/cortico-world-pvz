@@ -54,6 +54,29 @@ function evaluate(condition: PvzCondition, board = boardState()): boolean | null
 }
 
 describe('PvZ condition parsing', () => {
+  it('matches exposed boss windows and thaw without treating missing observations as false', () => {
+    const condition = parse({ boss: { vulnerable: true, immobilized: false } });
+    const board = boardState({ boss: { phase: 'boss_idle', immobilized: false, projectile: null } });
+    for (const phase of ['boss_idle', 'boss_head_entering', 'boss_head_leaving']) {
+      board.boss!.phase = phase;
+      expect(evaluate(condition, board)).toBe(false);
+    }
+    for (const phase of ['boss_aiming', 'boss_spitting', 'boss_recovering']) {
+      board.boss!.phase = phase;
+      expect(evaluate(condition, board)).toBe(true);
+      board.boss!.immobilized = true;
+      expect(evaluate(condition, board)).toBe(false);
+      board.boss!.immobilized = false;
+    }
+    expect(describePvzCondition(condition)).toBe('僵王头部可受伤且未定身');
+    expect(evaluate(condition, boardState({ boss: null }))).toBe(false);
+    expect(evaluate({ not: condition }, boardState({ boss: undefined }))).toBeNull();
+    board.disclosure.entitiesVisible = false;
+    expect(evaluate({ not: condition }, board)).toBeNull();
+    for (const boss of [{}, { vulnerable: 1 }, { future: true }, { immobilized: null }]) {
+      expect(parsePvzCondition({ boss })).toHaveProperty('error');
+    }
+  });
   it('冰火球条件只匹配已公开类型和排，缺少观察能力时保持未知', () => {
     const fire = parse({ bossProjectile: { kind: 'fireball' } });
     const ice = parse({ bossProjectile: { kind: 'iceball', row: 5 } });
@@ -536,7 +559,7 @@ describe('PvZ condition descriptions and schema', () => {
     }
     const variants = parameters.$defs.pvzCondition.oneOf;
     expect(variants.map((variant: { required: string[] }) => variant.required[0]).sort())
-      .toEqual(['all', 'any', 'bossProjectile', 'card', 'cell', 'collectible', 'not', 'sun', 'zombie']);
+      .toEqual(['all', 'any', 'boss', 'bossProjectile', 'card', 'cell', 'collectible', 'not', 'sun', 'zombie']);
     for (const variant of variants) expect(variant.additionalProperties).toBe(false);
   });
 });

@@ -21,6 +21,7 @@ import {
   describeSemanticTargets,
   localizedCardDisplay,
   semanticMenuTarget,
+  bossHeadVulnerable,
 } from './semantic.ts';
 import { progressFilteredSeedChoices } from './unlocks.ts';
 
@@ -56,7 +57,6 @@ const MECHANIC_DELAYS: Readonly<Record<string, string>> = {
   short_morph_then_inherited: '变身需时',
 };
 
-/** Only activation constraints and limited reach/lifetime accompany ordinary card state. */
 function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] {
   const mechanics = mechanicsForCard(card);
   if (!mechanics) return [];
@@ -70,6 +70,8 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
   if (mechanics.area.startsWith('short_forward')) facts.push('短程');
   if (mechanics.area === 'centered_nearby_area') facts.push('周围近程');
   if (mechanics.effect === 'wake_sleeping_mushroom') facts.push('唤醒睡眠蘑菇');
+  if (mechanics.effect === 'freeze_then_slow_zombies') facts.push('冻结全场后减速');
+  if (mechanics.effect === 'damage_row_and_remove_ice_trails') facts.push('整排伤害并清冰道');
   const delay = MECHANIC_DELAYS[mechanics.delay];
   if (delay) facts.push(delay);
   if (mechanics.lifetime === 'single_use') facts.push('一次性');
@@ -495,6 +497,37 @@ function renderMowers(board: PvzBoardState): string {
   return [...ready, ...triggered].join(', ') || '无';
 }
 
+function renderBoardCards(board: PvzBoardState): string[] {
+  if (!board.cards.length || board.cards.some(card => card.cost !== null)) {
+    return board.cards.map(card => renderedBoardCard(board, card));
+  }
+  const groups = new Map<string, PvzCard[]>();
+  for (const card of board.cards) {
+    const key = `${card.type}:${card.imitates}`;
+    const group = groups.get(key) ?? [];
+    group.push(card);
+    groups.set(key, group);
+  }
+  return [...groups.values()].map(cards => {
+    const card = cards[0]!;
+    const available = cards.filter(card => card.ready && card.affordable).length;
+    const facts = cardMechanicsFacts(card).filter(fact =>
+      ![1, 3, 5].includes(board.background) || fact !== '白天入睡，需咖啡豆唤醒');
+    return `${seedIdentity(card.name, card.imitates)}×${cards.length}张[可用${available}张]`
+      + (facts.length ? `（${facts.join('；')}）` : '');
+  });
+}
+
+function emptyFlowerPots(board: PvzBoardState): string[] {
+  if (!board.disclosure.entitiesVisible || !board.boss) return [];
+  const pots = sortedByCell(board.plants.filter(plant => plant.type === 33 && !plant.squished
+    && !board.plants.some(other => other.row === plant.row && other.column === plant.column
+      && other.type !== 33 && other.type !== 30 && !other.squished)
+    && board.cells.some(cell => cell.row === plant.row && cell.column === plant.column
+      && cell.playable !== null && !['ice_trail', 'fog_hidden', 'dark_hidden'].includes(cell.blocker ?? ''))));
+  return [pots.length ? `空花盆落点：${pots.map(pot => cellText(pot.row, pot.column)).join('、')}` : '空花盆落点：无'];
+}
+
 export function cursorDescription(cursor: PvzBoardState['cursor']): string {
   const labels: Record<string, string> = {
     normal: '无', plant: '卡片', usable_seed: '可用种子包', glove_plant: '手套中的植物',
@@ -532,7 +565,7 @@ export function renderBossProjectile(ball: NonNullable<NonNullable<PvzBoardState
 function renderBoss(board: PvzBoardState): string[] {
   if (!board.disclosure.entitiesVisible || !board.boss) return [];
   return [
-    `僵王在棋盘右侧：${zombiePhaseLabel(board.boss.phase)}${board.boss.immobilized ? '，定身' : ''}`,
+    `僵王在棋盘右侧：${zombiePhaseLabel(board.boss.phase)}，头部${bossHeadVulnerable(board.boss.phase) ? '可' : '不可'}受伤${board.boss.immobilized ? '，定身' : ''}`,
     ...(board.boss.projectile ? [renderBossProjectile(board.boss.projectile)] : []),
   ];
 }
@@ -553,12 +586,13 @@ function compactBoard(snapshot: PvzSnapshot, detail: 'summary' | 'full'): string
   const lines = [
     `关卡 ${board.level} · ${modeDisplay(snapshot)} · ${backgroundName(board.background)} · ${board.paused ? '暂停' : '进行中'}`,
     `阳光 ${board.sun} · ${renderProgress(board.progress)}`,
-    `卡片 ${board.cards.map((card) => renderedBoardCard(board, card)).join(' ') || '无'}`,
+    `卡片 ${renderBoardCards(board).join(' ') || '无'}`,
     `手持 ${cursorDescription(board.cursor)}`,
     ...boardRowLines(board),
     // 僵尸写在棋盘格里;黑暗里棋盘整行不可见,单独说一句
     ...renderPortals(board),
     ...renderBoss(board),
+    ...emptyFlowerPots(board),
     ...(entitiesVisible ? [] : ['僵尸 黑暗中不可见']),
     entitiesVisible
       ? `收集物 ${renderCollectibleCounts(board)}`
@@ -700,9 +734,10 @@ function semanticBoard(snapshot: PvzSnapshot, board: PvzBoardState): Record<stri
     阳光: board.sun,
     进度: renderProgress(board.progress),
     棋盘: semanticBoardMatrix(board),
-    卡片: board.cards.map((card) => renderedBoardCard(board, card)),
+    卡片: renderBoardCards(board),
     ...(renderPortals(board).length ? { 传送门: renderPortals(board) } : {}),
     ...(renderBoss(board).length ? { 僵王: renderBoss(board) } : {}),
+    ...(emptyFlowerPots(board).length ? { 空花盆: emptyFlowerPots(board) } : {}),
     手持: cursorDescription(board.cursor),
     僵尸: visible ? sortedByCell(board.zombies).map(zombieDescription) : '黑暗中不可见',
     收集物: visible ? renderCollectibleCounts(board) : '黑暗中不可见',

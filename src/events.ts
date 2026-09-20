@@ -325,6 +325,11 @@ export function trackSnapshot(
         urgent: true, senderKey: 'pvz.boss',
       });
     }
+    if (boss && oldBoss && boss.immobilized !== oldBoss.immobilized) {
+      events.push({ type: 'pvz.boss.immobilized',
+        text: `[PvZ] 僵王${boss.immobilized ? '已定身' : '定身已解除'}`,
+        urgent: true, senderKey: 'pvz.boss' });
+    }
     const ball = boss?.projectile;
     const oldBall = oldBoss?.projectile;
     if (ball && (ball.kind !== oldBall?.kind || ball.row !== oldBall?.row)) {

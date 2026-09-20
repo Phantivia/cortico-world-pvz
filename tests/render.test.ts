@@ -79,6 +79,30 @@ function mechanicsChoice(id: number, state: PvzSeedChoice['state'] = 'chooser'):
   };
 }
 
+it('groups interchangeable conveyor packets and lists only disclosed empty pots for the boss', () => {
+  const board = boardState({ background: 5,
+    boss: { phase: 'boss_aiming', immobilized: false, projectile: null },
+    cards: [mechanicsCard(14, { slot: 0, cost: null }), mechanicsCard(14, { slot: 1, cost: null, ready: false }),
+      mechanicsCard(20, { slot: 2, cost: null })],
+    plants: [1, 2, 3, 4].map(column => ({ id: column, type: 33, name: 'flower_pot', row: 1, column,
+      phase: 'active', condition: 'intact', sleeping: false, squished: false, layers: ['base'] })),
+  });
+  board.plants.push({ ...board.plants[0]!, id: 9, type: 32, name: 'cabbage_pult', column: 2, layers: ['main'] });
+  board.plants[2]!.squished = true;
+  board.cells.find(cell => cell.row === 1 && cell.column === 4)!.playable = null;
+  const state = snapshot({ screen: 'board', mode: 35, board });
+  for (const text of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(text).toContain('寒冰菇×2张[可用1张]');
+    expect(text).toContain('冻结全场后减速');
+    expect(text).toContain('火爆辣椒×1张[可用1张]');
+    expect(text).toContain('空花盆落点：第1排第1列');
+    expect(text).not.toMatch(/空花盆落点：[^\n"\]]*第[234]列/);
+    expect(text).toContain('头部可受伤');
+  }
+  board.disclosure.entitiesVisible = false;
+  expect(renderSnapshot(state)).not.toContain('空花盆落点');
+});
+
 describe('PvZ 卡片生效条件的公开提示', () => {
   it('日间泳池选卡在未携带咖啡豆时仍说明大喷菇的睡眠和短程条件', () => {
     const state = snapshot({

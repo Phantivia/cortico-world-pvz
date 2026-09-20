@@ -30,6 +30,23 @@ it('僵王动作变化分别描述头部伸入、瞄准、吐球与收回', () =
   }
 });
 
+it('reports boss freeze and thaw once without inferring thaw from a hidden board', () => {
+  const before = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
+    phase: 'boss_aiming', immobilized: false, projectile: null,
+  } }) });
+  const frozen = structuredClone(before);
+  frozen.board!.boss!.immobilized = true;
+  expect(trackSnapshot(frozen, before)).toContainEqual(expect.objectContaining({
+    type: 'pvz.boss.immobilized', text: '[PvZ] 僵王已定身', urgent: true,
+  }));
+  expect(trackSnapshot(before, frozen)).toContainEqual(expect.objectContaining({
+    type: 'pvz.boss.immobilized', text: '[PvZ] 僵王定身已解除', urgent: true,
+  }));
+  expect(trackSnapshot(frozen, frozen).some(event => event.type === 'pvz.boss.immobilized')).toBe(false);
+  before.board!.disclosure.entitiesVisible = false;
+  expect(trackSnapshot(before, frozen).some(event => event.type === 'pvz.boss.immobilized')).toBe(false);
+});
+
 it('冰火球出现和消失产生事件，滚动不重复出现，遮挡不冒充消失', () => {
   const before = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
     phase: 'boss_spitting', immobilized: false, projectile: null,

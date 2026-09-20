@@ -1,8 +1,10 @@
 import { PLANT_NAMES, cellText, plantDisplayName, plantTypeOf, rowText } from './names.ts';
 import type { PvzBoardCell, PvzBoardState, PvzSnapshot } from './protocol.ts';
 import type { PvzPlantName, PvzSeedSelector } from './skills.ts';
+import { bossHeadVulnerable } from './semantic.ts';
 
 export type PvzCondition =
+  | { boss: { vulnerable?: boolean; immobilized?: boolean } }
   | { bossProjectile: { kind: 'fireball' | 'iceball'; row?: number } }
   | { sun: { min?: number; max?: number } }
   | { card: { plant: PvzSeedSelector; ready?: boolean; affordable?: boolean } }
@@ -66,6 +68,14 @@ export function parsePvzCondition(raw: unknown): ParseResult {
     }
     const fields = record(value[key]);
     if (!fields) return { error: `${at}: 必须是谓词对象` };
+    if (key === 'boss') {
+      if (!onlyKeys(fields, ['vulnerable', 'immobilized'])
+        || Object.keys(fields).length === 0
+        || Object.values(fields).some(value => typeof value !== 'boolean')) {
+        return { error: `${at}: 至少指定 vulnerable/immobilized 中的一个布尔值` };
+      }
+      return { condition: { boss: { ...fields } } };
+    }
     if (key === 'bossProjectile') {
       if (!onlyKeys(fields, ['kind', 'row'])
         || (fields.kind !== 'fireball' && fields.kind !== 'iceball')
@@ -234,6 +244,13 @@ export function evaluatePvzCondition(
       && (affordable === undefined || card.affordable === affordable));
   }
   if (!board.disclosure.entitiesVisible) return null;
+  if ('boss' in condition) {
+    if (board.boss === undefined) return null;
+    if (!board.boss) return false;
+    const { vulnerable, immobilized } = condition.boss;
+    return (vulnerable === undefined || bossHeadVulnerable(board.boss.phase) === vulnerable)
+      && (immobilized === undefined || board.boss.immobilized === immobilized);
+  }
   if ('bossProjectile' in condition) {
     if (board.boss === undefined) return null;
     const { kind, row } = condition.bossProjectile;
@@ -302,6 +319,13 @@ function rowsOf(condition: Extract<PvzCondition, { zombie: unknown }>['zombie'])
 }
 
 export function describePvzCondition(condition: PvzCondition): string {
+  if ('boss' in condition) {
+    const { vulnerable, immobilized } = condition.boss;
+    return `僵王${[
+      ...(vulnerable === undefined ? [] : [vulnerable ? '头部可受伤' : '头部不可受伤']),
+      ...(immobilized === undefined ? [] : [immobilized ? '已定身' : '未定身']),
+    ].join('且')}`;
+  }
   if ('bossProjectile' in condition) {
     const { kind, row } = condition.bossProjectile;
     return `${row === undefined ? '棋盘' : rowText(row)}出现可见${kind === 'fireball' ? '火球' : '冰球'}`;
@@ -350,6 +374,15 @@ export const PVZ_CONDITION_DEFS = {
     description: '可自由组合的可见事实条件，用 all/any/not 组合，最多 8 层、64 节点。'
       + '条件成立那一刻由 World 替你落子，中间不再隔一轮观察和思考；未知保留为未知。',
     oneOf: [
+      {
+        type: 'object', additionalProperties: false, required: ['boss'],
+        properties: { boss: {
+          type: 'object', additionalProperties: false,
+          description: '僵王可见头部状态。vulnerable 为低头瞄准、吐球或恢复阶段；immobilized 为当前定身。',
+          properties: { vulnerable: { type: 'boolean' }, immobilized: { type: 'boolean' } },
+          anyOf: [{ required: ['vulnerable'] }, { required: ['immobilized'] }],
+        } },
+      },
       {
         type: 'object', additionalProperties: false, required: ['bossProjectile'],
         properties: { bossProjectile: {

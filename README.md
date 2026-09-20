@@ -65,7 +65,7 @@ One panel, `game`: start and stop, phase, process id and the last error detail. 
 
 ```bash
 corepack pnpm typecheck
-corepack pnpm test       # 37 files; the ten native fixtures need the x86 MSVC toolchain
+corepack pnpm test       # Native fixtures need the x86 MSVC toolchain
 corepack pnpm build      # esbuild → dist/console.js
 ```
 
@@ -227,6 +227,13 @@ Zomboss phases and visible ice/fire balls have semantic state and change events.
 `bossProjectile: { kind: "fireball" | "iceball", row?: number }` condition can arm a single
 response to an already visible ball. Omit `row` to match any lane. The model chooses the plant
 and its empty flower pot; the condition neither selects a tactic nor reveals a future attack.
+
+`boss: { vulnerable?, immobilized? }` matches the visible head state. Vulnerability is true
+during aiming, spitting, and recovery; at least one boolean is required. Missing boss observation
+support or hidden entities remain unknown, including under negation. Freeze and thaw emit urgent
+events. Boss observations list currently empty flower pots; conveyor cards are grouped by identity
+with total and usable counts. The environment prompt describes head damage, freeze/thaw, and ball
+interactions so the model can choose and arm finite actions.
 
 - Seed selection and removal settle only after the packet's travel animation ends, so replacement can immediately reselect a removed packet.
 - Resuming a saved minigame is verified when its menu advances to the same mode's active board, including menus that have no board snapshot yet.

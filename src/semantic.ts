@@ -21,6 +21,10 @@ import type {
 
 export type PvzSemanticState = PvzSnapshot | PvzBoardState;
 
+export function bossHeadVulnerable(phase: string): boolean {
+  return ['boss_aiming', 'boss_spitting', 'boss_recovering'].includes(phase);
+}
+
 export type PvzSemanticErrorCode =
   | 'board_unavailable'
   | 'invalid_selector'
