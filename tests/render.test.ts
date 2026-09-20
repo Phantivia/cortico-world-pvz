@@ -8,6 +8,21 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('visible seed packets carry their localized names, direction, and activation mechanics', () => {
+  const names = ['leftpeater', 'hypno_shroom', 'potato_mine'] as const;
+  const state = snapshot({ screen: 'board', mode: 53, board: boardState({
+    collectibles: names.map((name, index) => ({
+      id: index + 1, kind: 'usable_seed', containedType: PLANT_NAMES.indexOf(name),
+      containedName: name, x: 400, y: 100, row: 1, column: 5,
+    })),
+  }) });
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('左向豌豆射手；向房子方向射击');
+    expect(rendered).toContain('魅惑菇；白天入睡，需咖啡豆唤醒；被吃后魅惑咬它的僵尸');
+    expect(rendered).toContain('土豆雷；种下后准备较久；一次性');
+  }
+});
+
 it('renders vase markings and only disclosed contents across observation surfaces', () => {
   const state = snapshot({ screen: 'board', mode: 51, modeKind: 'vasebreaker', board: boardState({
     gridItems: [
