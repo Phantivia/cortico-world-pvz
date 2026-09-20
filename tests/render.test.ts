@@ -124,6 +124,10 @@ it('公开手持种子名称与合法落点，放置后不保留旧的手持信�
     expect(rendered).toContain('可用种子包（荷叶）');
     expect(rendered).toContain('第3排第2列');
   }
+  state.board!.cursor.heldType = PLANT_NAMES.indexOf('leftpeater');
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('可用种子包（左向豌豆射手；只攻击本排列号更小的敌人，应位于敌人右侧）');
+  }
   state.board!.cursor = { kind: 'normal', heldType: 16, logicalX: 160, logicalY: 300 };
   expect(renderSnapshot(state)).toContain('手持 无');
   expect(renderSnapshot(state)).not.toContain('可用种子包（荷叶）');

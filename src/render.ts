@@ -565,6 +565,10 @@ export function cursorDescription(cursor: PvzBoardState['cursor']): string {
     money_sign: '出售工具', wheelbarrow: '推车', tree_food: '树肥',
   };
   const label = labels[cursor.kind] ?? '未知工具';
+  if (cursor.kind === 'usable_seed' && cursor.heldType !== null) {
+    const facts = cardMechanicsFacts({ type: cursor.heldType, imitates: null });
+    return `${label}（${[plantDisplayName(cursor.heldType), ...facts].join('；')}）`;
+  }
   return ['plant', 'usable_seed', 'glove_plant', 'wheelbarrow_plant'].includes(cursor.kind)
     ? `${label}（${cursor.heldType === null ? '种类未知' : plantDisplayName(cursor.heldType)}）`
     : label;
