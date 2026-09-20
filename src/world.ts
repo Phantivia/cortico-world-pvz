@@ -509,7 +509,7 @@ export class PvzWorld implements World {
       const whackSteps = parsed.steps.filter(isWhackStep);
       const liveWhackBoard = board !== null && this.latest !== null && isWhackSnapshot(this.latest);
       let whackAdmission: { scope: WhackQueueScope; continuation: boolean } | null = null;
-      this.requireConveyorCardBudget(board, parsed.steps);
+      const admittedSteps = this.requireConveyorCardBudget(board, parsed.steps, true);
       if (whackSteps.length > 0) {
         if (!liveWhackBoard || !board || !this.latest) {
           throw new Error('锤击步骤只能在当前可见的锤僵尸棋盘提交');
@@ -557,7 +557,7 @@ export class PvzWorld implements World {
           `第 ${decisionBarrier + 1} 步 ${describePvzStep(parsed.steps[decisionBarrier]!)} 会改变特殊阶段或界面，必须作为本次技能队列的最后一步；收到回执和新快照后再产出下一轮队列`,
         );
       }
-      const steps = parsed.steps.map((step): PvzDoStep => {
+      const steps = admittedSteps.map((step): PvzDoStep => {
         if (step.skill === 'special' && step.action === 'whack') {
           return {
             ...step,
@@ -703,6 +703,9 @@ export class PvzWorld implements World {
     }
     if (step.skill === 'choose_seeds') return this.executeSeedTask(step, context);
     if (step.skill === 'plant') {
+      if ('unavailableAtAdmission' in step) {
+        return { outcome: 'yield', text: String(step.unavailableAtAdmission) };
+      }
       const plant = pvzSeedSelectorName(step.plant);
       const plantLabel = pvzSeedSelectorDisplayName(step.plant);
       const board = this.requireBoard(true);
@@ -741,7 +744,10 @@ export class PvzWorld implements World {
         slot = reserved.slot;
       } else {
         const card = this.executor.selectUnreservedCard(step.plant, context.taskId);
-        if (!card) return { outcome: 'blocked', text: `当前没有未被条件任务占用的 ${plantLabel} 卡片` };
+        if (!card) return {
+          outcome: step.when === 'now' ? 'yield' : 'blocked',
+          text: `当前没有未被条件任务占用的 ${plantLabel} 卡片`,
+        };
         slot = card.slot;
       }
       const conveyor = typeof column === 'number' && isConveyorBoard(board);
@@ -1453,10 +1459,15 @@ export class PvzWorld implements World {
    * 一类卡能排几步,看带子上此刻有几张同类的:同类之间没有分别,落点由步骤自己给。
    * 在途的队列与已武装的触发器一起算。只算模型自己的活,World 收阳光不碰卡。
    */
-  private requireConveyorCardBudget(board: PvzBoardState | null, steps: readonly PvzDoStep[]): void {
-    if (!board || !isConveyorBoard(board)) return;
+  private requireConveyorCardBudget(
+    board: PvzBoardState | null,
+    steps: readonly PvzDoStep[],
+    skipUnavailableNow = false,
+  ): PvzDoStep[] {
+    if (!board || !isConveyorBoard(board)) return [...steps];
     const adding = conveyorCardDemand(board, steps);
-    if (adding.size === 0) return;
+    if (adding.size === 0) return [...steps];
+    const admitted = [...steps];
     const pending = conveyorCardDemand(board, [
       ...this.executor.pendingSteps(),
       ...this.triggers.list().flatMap((trigger) => trigger.steps),
@@ -1466,11 +1477,24 @@ export class PvzWorld implements World {
       const available = board.cards.filter((card) => conveyorCardKey(card) === key).length;
       if (inFlight + count <= available) continue;
       const held = inFlight > 0 ? `，在途的队列与触发器已经占了 ${inFlight} 张` : '';
+      const matching = steps.map((step, index) => ({ step, index }))
+        .filter(({ step }) => conveyorCardDemand(board, [step]).has(key));
+      if (skipUnavailableNow && matching.every(({ step }) => step.skill === 'plant' && step.when === 'now')) {
+        for (const { step, index } of matching.slice(Math.max(0, available - inFlight))) {
+          admitted[index] = {
+            ...step,
+            unavailableAtAdmission: `${describePvzStep(step)}已跳过：传送带上「${conveyorCardLabel(board, key)}」`
+              + `受理时有 ${available} 张${held}，本步超出剩余张数`,
+          } as PvzDoStep & { unavailableAtAdmission: string };
+        }
+        continue;
+      }
       throw new Error(
         `传送带上「${conveyorCardLabel(board, key)}」此刻有 ${available} 张，这次要 ${count} 张${held}`
         + '；等前面那些落定并收到新快照再排',
       );
     }
+    return admitted;
   }
 
   /** 触发器的四种结局都作为事件投出;打响那条随后还会有那份队列自己的 pvz.task。 */
@@ -2229,6 +2253,7 @@ function isConveyorBoard(board: PvzBoardState): boolean {
 }
 
 function consumesConveyorCard(step: PvzDoStep): boolean {
+  if ('unavailableAtAdmission' in step) return false;
   return step.skill === 'plant'
     || (step.skill === 'special' && step.action === 'bowling');
 }

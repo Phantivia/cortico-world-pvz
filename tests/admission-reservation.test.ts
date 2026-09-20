@@ -27,6 +27,42 @@ function steps(column: number): PvzDoStep[] {
 }
 
 describe('PvZ reservation admission', () => {
+  it('skips excess immediate packets and still plants the other conveyor cards', async () => {
+    const initial = currentBoard(true);
+    initial.board!.level = 10;
+    const card = { ...initial.board!.cards[0]!, cost: null };
+    initial.board!.cards = [card, { ...card, slot: 1, type: 1, name: 'sunflower' }];
+    const transport = new FakePvzTransport(initial);
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant' || !('column' in action)) return;
+      const used = fake.state.board!.cards.find(item => item.slot === action.slot)!;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => {
+        draft.board!.plants.push({
+          id: 900 + action.column, type: used.type, name: used.name, row: action.row, column: action.column,
+          condition: 'intact', sleeping: false, squished: false, layers: [],
+        });
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', { steps: [
+        { ...plant(3), when: 'now' },
+        { ...plant(4), when: 'now' },
+        { ...plant(5), plant: 'sunflower', when: 'now' },
+      ] });
+      await afterTimers(60);
+      expect(transport.state.board!.plants.map(item => [item.name, item.column]))
+        .toEqual([['peashooter', 3], ['sunflower', 5]]);
+      expect(transport.state.board!.cards).toEqual([]);
+      const report = host.events.find(({ event }) => event.type === 'pvz.task')!.event.text;
+      expect(report).toContain('部分完成');
+      expect(report).toContain('本步超出剩余张数');
+    } finally { await world.stop(); }
+  });
+
   it.each(['one task', 'two tasks'])('consumes distinct conveyor cards after slot compaction in %s', async (grouping) => {
     const initial = currentBoard();
     initial.board!.level = 10;

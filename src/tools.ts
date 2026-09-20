@@ -127,7 +127,7 @@ const PVZ_STEP_SCHEMA = {
         },
         when: {
           type: 'string', enum: ['now', 'ready', 'ready_and_affordable'],
-          description: '缺省 now：卡片没冷却好或阳光不够就当场失败并跳过这一步。ready 等待冷却；ready_and_affordable 还等待阳光。等待会保留卡片；队列走到这一步就停下等，后面的步骤在它种下之后才做。等待期间阳光照常由 World 自动收取。',
+          description: '缺省 now：卡片不足、没冷却好或阳光不够就跳过这一步，后面的步骤照做。传送带超额的即时种植在受理时标记跳过，不等未来卡片。ready 等待冷却；ready_and_affordable 还等待阳光。等待会保留卡片；队列走到这一步就停下等，后面的步骤在它种下之后才做。等待期间阳光照常由 World 自动收取。',
         },
       },
       required: ['skill', 'plant', 'row', 'column'],

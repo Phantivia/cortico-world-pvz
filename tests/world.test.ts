@@ -1360,14 +1360,14 @@ describe('PvzWorld 工具流程', () => {
 
       // 豌豆射手带子上只有一张,已经排掉了。
       expect(await callTool(world, 'pvz_do', {
-        steps: [{ skill: 'plant', plant: 'peashooter', row: 4, column: 2 }], queue: 'append',
+        steps: [{ skill: 'plant', plant: 'peashooter', row: 4, column: 2, when: 'ready' }], queue: 'append',
       })).toContain('传送带上「豌豆射手」此刻有 1 张，这次要 1 张，在途的队列与触发器已经占了 1 张');
     } finally {
       await world.stop();
     }
   });
 
-  it('传送带上已武装的触发器占掉同类卡的份额，队列不能再加', async () => {
+  it('传送带上已武装的触发器占掉同类卡的份额，不能再绑定等待任务', async () => {
     const transport = new FakePvzTransport(snapshot({
       screen: 'board', scene: 3, mode: 0, menu: [],
       board: boardState({
@@ -1387,7 +1387,7 @@ describe('PvzWorld 工具流程', () => {
       })).toContain('触发器#1 已武装');
 
       expect(await callTool(world, 'pvz_do', {
-        steps: [{ skill: 'plant', plant: 'peashooter', row: 3, column: 2 }],
+        steps: [{ skill: 'plant', plant: 'peashooter', row: 3, column: 2, when: 'ready' }],
       })).toContain('在途的队列与触发器已经占了 1 张');
 
       // 收取与铲除不碰卡片,照样受理。
