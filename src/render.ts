@@ -497,7 +497,9 @@ function renderMowers(board: PvzBoardState): string {
     .map((mower) => `${rowText(mower.row)}${mowerName(mower.kind)}待命`);
   const triggered = board.mowers.filter((mower) => mower.state === 'triggered')
     .map((mower) => `${rowText(mower.row)}${mowerName(mower.kind)}已触发`);
-  return [...ready, ...triggered].join(', ') || '无';
+  const squished = board.mowers.filter((mower) => mower.state === 'squished')
+    .map((mower) => `${rowText(mower.row)}${mowerName(mower.kind)}被压毁`);
+  return [...ready, ...triggered, ...squished].join(', ') || '无';
 }
 
 function renderBoardCards(board: PvzBoardState): string[] {

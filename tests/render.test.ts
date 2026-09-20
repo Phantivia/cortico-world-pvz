@@ -8,6 +8,16 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('renders a squished mower as destroyed across every observation surface', () => {
+  const state = snapshot({ screen: 'board', board: boardState({
+    mowers: [{ row: 1, kind: 'roof_cleaner', state: 'squished' }],
+  }) });
+  for (const text of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(text).toContain('第1排屋顶清洁车被压毁');
+    expect(text).not.toContain('已触发');
+  }
+});
+
 it('确认框只发布实际菜单动作，不将 restart 伪装成 confirm', () => {
   const state = snapshot({ screen: 'dialog', menu: [
     { id: 'restart', label: 'restart', enabled: true, x: 350, y: 400, state: null, record: null },

@@ -150,7 +150,7 @@ export interface PvzCard {
 export interface PvzMower {
   row: number;
   kind: string;
-  state: 'ready' | 'triggered';
+  state: 'ready' | 'triggered' | 'squished';
 }
 
 export interface PvzBoardCell {
@@ -984,7 +984,7 @@ function validateBoard(board: Record<string, unknown>, mode: number): void {
     if (!mower || !positiveInteger(mower.row) || Number(mower.row) > Number(board.rows)
       || mowerRows.has(Number(mower.row))
       || !['lawn_mower', 'pool_cleaner', 'roof_cleaner', 'super_mower'].includes(String(mower.kind))
-      || !['ready', 'triggered'].includes(String(mower.state))) {
+      || !['ready', 'triggered', 'squished'].includes(String(mower.state))) {
       throw new Error('snapshot.mower 字段无效');
     }
     exactKeys(mower, ['row', 'kind', 'state'], 'snapshot.mower');

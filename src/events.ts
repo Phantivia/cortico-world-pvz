@@ -401,7 +401,7 @@ export function trackSnapshot(
       type: 'pvz.threat.close',
       text: `[PvZ] 近屋威胁：${newlyClose.map((z) =>
         `${zombieDisplayNameOf(z.type, z.name)}在${cellText(z.row, z.column)}（${mowerStates.get(z.row) === 'ready' ? '这排割草机还在' : mowerStates.get(z.row) === 'triggered' ? '这排割草机正在清路' : '这排没有可用割草机'}）`).join('，')}`,
-      urgent: newlyClose.some((z) => mowerStates.get(z.row) === undefined),
+      urgent: newlyClose.some((z) => mowerStates.get(z.row) === undefined || mowerStates.get(z.row) === 'squished'),
       senderKey: 'pvz-threat',
     });
   }
@@ -513,11 +513,23 @@ export function trackSnapshot(
   const newMowers = new Map((after.board?.mowers ?? [])
     .map((mower) => [`${mower.row}:${mower.kind}`, mower]));
   const usedMowers = entityContinuity ? [...oldMowers].filter(([key, mower]) =>
-    mower.state === 'ready' && newMowers.get(key)?.state !== 'ready').map(([, mower]) => mower) : [];
+    mower.state === 'ready' && newMowers.get(key)?.state === 'triggered').map(([, mower]) => mower) : [];
   if (usedMowers.length) {
     events.push({
       type: 'pvz.mower.used',
       text: `[PvZ] 防线触发：${usedMowers.map((mower) => `${rowText(mower.row)}${mowerName(mower.kind)}`).join('、')}`,
+      urgent: true,
+    });
+  }
+
+  const lostMowers = entityContinuity ? [...oldMowers].filter(([key, mower]) =>
+    (mower.state !== 'squished' && newMowers.get(key)?.state === 'squished')
+      || (mower.state === 'ready' && !newMowers.has(key))) : [];
+  if (lostMowers.length) {
+    events.push({
+      type: 'pvz.mower.lost',
+      text: `[PvZ] 防线失效：${lostMowers.map(([key, mower]) =>
+        `${rowText(mower.row)}${mowerName(mower.kind)}（${newMowers.has(key) ? '被压毁' : '已不可见'}）`).join('、')}`,
       urgent: true,
     });
   }

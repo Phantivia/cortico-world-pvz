@@ -106,6 +106,8 @@ Dialog buttons use the same callable action names as the menu list, including a 
 
 The disclosure boundary is enforced inside the implant, before JSON crosses the pipe.
 
+Visible mowers distinguish ready, triggered and squished states. A squished mower has no defensive effect; its loss and nearby enemies request urgent delivery. A ready mower disappearing between observations is reported as unavailable without claiming it cleared the lane.
+
 - Dynamic objects beyond the rendered play area or behind the active fog mask are omitted.
 - Fog levels use the rendered fog alpha grid and fog offset. Missing or inconsistent fog samples hide the entity.
 - Invisighoul zombies are never disclosed from internal entity state.
@@ -219,9 +221,9 @@ Each model response may submit one `pvz_do` skill queue. A special action, confi
 
 ## Events and progression
 
-The 引擎子进程 projects lifecycle, screen, seed-picker, level start, visible progress, card readiness, close threats, mower use, victory, defeat, award, and committed profile progress. Victory and defeat come from a persistent, monotonic run result rather than inference from the current screen; award and defeat screens are supporting evidence for the same result. The game-enforced unique visible player name scopes profile commits and mode-record baselines, so changing users cannot be reported as progress.
+The 引擎子进程 projects lifecycle, screen, seed-picker, level start, visible progress, card readiness, close threats, mower use or loss, victory, defeat, award, and committed profile progress. Victory and defeat come from a persistent, monotonic run result rather than inference from the current screen; award and defeat screens are supporting evidence for the same result. The game-enforced unique visible player name scopes profile commits and mode-record baselines, so changing users cannot be reported as progress.
 
-Event urgency and snapshot freshness are independent. Lifecycle transitions, task outcomes, near threats, mower use, critical plant damage, and new special-action opportunities request `flush`. Ordinary battlefield changes use `debounce` and retain the global batch floor and ceiling. Ordinary currency appearances and regular card cooldown/affordability notifications use `piggyback`; they neither start nor extend a batch timer. Special-level resources and newly arrived conveyor cards retain their urgency. Routine duplicates remain archive-only. A sample containing an urgent event flushes after all its facts have been queued in order. A flush makes input ready for the next delivery boundary; operator pause and delivery gates still apply, and an active model request is not interrupted.
+Event urgency and snapshot freshness are independent. Lifecycle transitions, task outcomes, near threats, mower use or loss, critical plant damage, and new special-action opportunities request `flush`. Ordinary battlefield changes use `debounce` and retain the global batch floor and ceiling. Ordinary currency appearances and regular card cooldown/affordability notifications use `piggyback`; they neither start nor extend a batch timer. Special-level resources and newly arrived conveyor cards retain their urgency. Routine duplicates remain archive-only. A sample containing an urgent event flushes after all its facts have been queued in order. A flush makes input ready for the next delivery boundary; operator pause and delivery gates still apply, and an active model request is not interrupted.
 
 Explicit observation, task admission, each execution step, and deferred board rendering request a new native sample. The read command bypasses the input queue and returns only after its correlated result and a newer snapshot. Read failure never substitutes the cached board. Input receipts also require a post-result sample before an observed native effect can count as verified. Task admission and stopping are serialized; an interrupted step must pass the existing native release barrier before replacement input executes.
 

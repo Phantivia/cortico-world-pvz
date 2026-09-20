@@ -670,7 +670,7 @@ describe('PvZ 事件驱动唤醒', () => {
       type: 'pvz.visibility.changed', urgent: false,
     })]);
     expect(enteredDark.map((event) => event.type)).not.toEqual(expect.arrayContaining([
-      'pvz.zombie.visible', 'pvz.collectible.appeared', 'pvz.mower.used',
+      'pvz.zombie.visible', 'pvz.collectible.appeared', 'pvz.mower.used', 'pvz.mower.lost',
     ]));
 
     const visibleAgain = structuredClone(after);
@@ -919,6 +919,38 @@ describe('PvZ 事件驱动唤醒', () => {
     })]);
   });
 
+  it.each(['ready', 'triggered'] as const)('reports a %s mower being squished as an urgent loss', state => {
+    const before = snapshot({ screen: 'board', board: boardState({
+      mowers: [{ row: 1, kind: 'roof_cleaner', state }],
+      zombies: [{ id: 1, type: 2, name: 'conehead', row: 1, column: 2, columnPosition: 2,
+        xBand: 'near', speedCellsPerSecond: 0.2, condition: 'intact', armor: 'intact', shield: 'none',
+        hypnotized: false, slowed: false, immobilized: false }],
+    }) });
+    const after = structuredClone(before);
+    after.revision++;
+    after.board!.mowers[0]!.state = 'squished';
+    after.board!.zombies[0]!.xBand = 'lawn';
+    const events = trackSnapshot(after, before);
+    expect(events.find(event => event.type === 'pvz.mower.lost')).toMatchObject({
+      urgent: true, text: '[PvZ] 防线失效：第1排屋顶清洁车（被压毁）',
+    });
+    expect(events.find(event => event.type === 'pvz.threat.close')).toMatchObject({
+      urgent: true, text: expect.stringContaining('这排没有可用割草机'),
+    });
+    expect(events.some(event => event.type === 'pvz.mower.used')).toBe(false);
+    expect(trackSnapshot(structuredClone(after), after)).toEqual([]);
+  });
+
+  it('reports a vanished ready mower without inventing a clearing action', () => {
+    const before = snapshot({ screen: 'board', board: boardState() });
+    const after = structuredClone(before);
+    after.revision++;
+    after.board!.mowers = [];
+    const events = trackSnapshot(after, before);
+    expect(events.find(event => event.type === 'pvz.mower.lost')?.text).toContain('已不可见');
+    expect(events.some(event => event.type === 'pvz.mower.used')).toBe(false);
+  });
+
   it('割草机触发当帧即报告防线已用，不等对象滚出棋盘', () => {
     const before = snapshot({ screen: 'board', board: boardState() });
     const after = structuredClone(before);
@@ -962,7 +994,7 @@ describe('PvZ 事件驱动唤醒', () => {
     const settled = trackSnapshot(won, before);
     expect(settled.map((event) => event.type)).toContain('pvz.level.won');
     expect(settled.map((event) => event.type)).not.toEqual(expect.arrayContaining([
-      'pvz.mower.used', 'pvz.card.ready',
+      'pvz.mower.used', 'pvz.mower.lost', 'pvz.card.ready',
     ]));
 
     // 结算之后的每一帧同样:割草机一台台被收走,不是防线在触发
@@ -971,7 +1003,7 @@ describe('PvZ 事件驱动唤醒', () => {
     teardown.board!.mowers = [];
     teardown.board!.plants = [];
     const types = trackSnapshot(teardown, won).map((event) => event.type);
-    expect(types).not.toEqual(expect.arrayContaining(['pvz.mower.used', 'pvz.plant.lost']));
+    expect(types).not.toEqual(expect.arrayContaining(['pvz.mower.used', 'pvz.mower.lost', 'pvz.plant.lost']));
   });
 
   it('割草机触发当帧的近屋威胁说明正在清路，不误报该路无防线', () => {

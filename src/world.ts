@@ -2293,7 +2293,7 @@ function collectibleLabel(what: Extract<PvzDoStep, { skill: 'collect' }>['what']
 
 function unarmableMineThreat(board: PvzBoardState, row: number): PvzBoardState['zombies'][number] | null {
   if (!board.disclosure.entitiesVisible
-    || board.mowers.some((mower) => mower.row === row)) return null;
+    || board.mowers.some((mower) => mower.row === row && mower.state !== 'squished')) return null;
   return board.zombies.find((zombie) =>
     !zombie.hypnotized
     && zombie.row === row

@@ -1975,8 +1975,8 @@ const char* MowerName(int type) {
     return type >= 0 && type < static_cast<int>(std::size(names)) ? names[type] : "mower";
 }
 
-constexpr bool MowerTriggeredState(int state) {
-    return state == 2 || state == 3;
+constexpr const char* MowerStateName(int state) {
+    return state == 3 ? "squished" : state == 2 ? "triggered" : "ready";
 }
 
 constexpr bool MowerPublishable(bool disclosure, int state, bool dead, bool visible,
@@ -1985,8 +1985,6 @@ constexpr bool MowerPublishable(bool disclosure, int state, bool dead, bool visi
            row >= 0 && row < 6 && type >= 0 && type < 4;
 }
 
-static_assert(!MowerTriggeredState(0) && !MowerTriggeredState(1) &&
-              MowerTriggeredState(2) && MowerTriggeredState(3));
 static_assert(!MowerPublishable(false, 1, false, true, 0, 0) &&
               MowerPublishable(true, 1, false, true, 0, 0) &&
               !MowerPublishable(true, 1, true, true, 0, 0));
@@ -2118,7 +2116,7 @@ bool CollectibleClickPoint(const std::vector<CollectibleView>& coins, Collectibl
 struct MowerView {
     int row;
     int type;
-    bool triggered;
+    int state;
 };
 
 struct CardView {
@@ -3022,7 +3020,7 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
                              Field<uint8_t>(item, 0x30) != 0,
                              Field<uint8_t>(item, 0x31) != 0, row, type) &&
             FogAllowsZombie(view.address, 0, view.background, x, row)) {
-            view.mowers.push_back({row, type, MowerTriggeredState(state)});
+            view.mowers.push_back({row, type, state});
         }
     });
 
@@ -4834,7 +4832,7 @@ void AppendMowers(std::string& output, const BoardView& board) {
         output += ",\"kind\":";
         AppendString(output, MowerName(board.mowers[i].type));
         output += ",\"state\":";
-        AppendString(output, board.mowers[i].triggered ? "triggered" : "ready");
+        AppendString(output, MowerStateName(board.mowers[i].state));
         output.push_back('}');
     }
     output.push_back(']');

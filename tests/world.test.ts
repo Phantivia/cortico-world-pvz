@@ -648,14 +648,14 @@ describe('PvzWorld 工具流程', () => {
     }
   });
 
-  it('无割草机的近屋威胁会阻止来不及武装的土豆雷', async () => {
+  it.each(['absent', 'squished'] as const)('割草机 %s 时近屋威胁会阻止来不及武装的土豆雷', async mowerState => {
     const transport = new FakePvzTransport(snapshot({
       screen: 'board',
       menu: [],
       board: boardState({
-        mowers: [1, 2, 3, 4].map((row) => ({
+        mowers: [...[1, 2, 3, 4].map((row) => ({
           row, kind: 'lawn_mower', state: 'ready' as const,
-        })),
+        })), ...(mowerState === 'squished' ? [{ row: 5, kind: 'lawn_mower', state: 'squished' as const }] : [])],
         cards: [{
           slot: 4, type: 4, name: 'potato_mine', imitates: null, cost: 25,
           ready: true, affordable: true, cooldown: 'ready', cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0.0, x: 80, y: 40,

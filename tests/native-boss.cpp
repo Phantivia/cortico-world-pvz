@@ -52,6 +52,27 @@ int main() {
         return json;
     };
     assert(observe().find("\"projectile\":null") != std::string::npos);
+
+    Memory<pvz::dataArray::mowerStride> mower;
+    board.put(pvz::board::mowers, ArrayHeader{mower.address(), 1, 1, 0, 1, 1, 0});
+    mower.put(pvz::dataArray::mowerObjectSize, 0x10000U);
+    mower.put(0x08, 50.0f);
+    mower.put(0x14, 0);
+    mower.put(0x31, uint8_t{1});
+    mower.put(0x34, 2);
+    for (const auto& expected : std::array<std::pair<int, const char*>, 3>{{
+             {1, "ready"}, {2, "triggered"}, {3, "squished"}}}) {
+        mower.put(0x2C, expected.first);
+        BoardView view;
+        assert(ReadBoard(app.address(), 35, view));
+        std::string json;
+        AppendMowers(json, view);
+        assert(json == std::string("[{\"row\":1,\"kind\":\"roof_cleaner\",\"state\":\"") + expected.second + "\"}]");
+    }
+    mower.put(0x31, uint8_t{0});
+    BoardView hidden;
+    assert(ReadBoard(app.address(), 35, hidden));
+    assert(hidden.mowers.empty());
     zombie.put(0x140, 0x10000U);
     assert(observe().find("\"kind\":\"fireball\",\"row\":5,\"columnPosition\":6.6") != std::string::npos);
     zombie.put(0x150, uint8_t{0});

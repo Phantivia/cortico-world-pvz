@@ -9,6 +9,14 @@ import {
 import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 
 describe('PvZ 原生协议边界', () => {
+  it.each(['ready', 'triggered', 'squished'] as const)('preserves visible mower state %s', state => {
+    const value = snapshot({ screen: 'board', board: boardState({
+      mowers: [{ row: 1, kind: 'roof_cleaner', state }],
+    }) });
+    expect(parseNativeMessage(JSON.stringify({ type: 'snapshot', protocol: PVZ_NATIVE_PROTOCOL, snapshot: value })))
+      .toMatchObject({ snapshot: { board: { mowers: [{ row: 1, state }] } } });
+  });
+
   it('接受可见僵王与球，拒绝越界、隐藏或其他关卡中的球', () => {
     const state = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
       phase: 'boss_spitting', immobilized: false,
