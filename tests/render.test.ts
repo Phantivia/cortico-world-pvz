@@ -3,13 +3,14 @@ import {
   compactSnapshot,
   renderSnapshot,
   renderTacticalSnapshot,
+  zombiePhaseLabel,
 } from '../src/render.ts';
 import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
 it('visible seed packets carry their localized names, direction, and activation mechanics', () => {
-  const names = ['leftpeater', 'hypno_shroom', 'potato_mine'] as const;
+  const names = ['leftpeater', 'hypno_shroom', 'potato_mine', 'torchwood', 'magnet_shroom', 'tall_nut'] as const;
   const state = snapshot({ screen: 'board', mode: 53, board: boardState({
     collectibles: names.map((name, index) => ({
       id: index + 1, kind: 'usable_seed', containedType: PLANT_NAMES.indexOf(name),
@@ -20,7 +21,16 @@ it('visible seed packets carry their localized names, direction, and activation 
     expect(rendered).toContain('左向豌豆射手；只攻击本排列号更小的敌人，应位于敌人右侧');
     expect(rendered).toContain('魅惑菇；白天入睡，需咖啡豆唤醒；被吃后魅惑咬它的僵尸');
     expect(rendered).toContain('土豆雷；种下后准备较久；一次性');
+    expect(rendered).toContain('火炬树桩；点燃穿过本格的豌豆，自身不攻击');
+    expect(rendered).toContain('磁力菇；白天入睡，需咖啡豆唤醒；吸走附近金属装备，自身不攻击');
+    expect(rendered).toContain('高坚果；阻挡并拦截撑杆跳跃');
   }
+});
+
+it('distinguishes an available pole, an active vault, and a spent pole', () => {
+  expect(zombiePhaseLabel('pole_vault_ready')).toBe('持杆，可跳跃');
+  expect(zombiePhaseLabel('pole_vaulting')).toBe('正在撑杆跳跃');
+  expect(zombiePhaseLabel('pole_vault_spent')).toBe('已丢杆，不能再跳');
 });
 
 it('renders vase markings and only disclosed contents across observation surfaces', () => {

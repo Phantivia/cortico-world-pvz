@@ -185,7 +185,7 @@ Conditional planting expresses future intent. `when:"ready"` waits for cooldown;
 
 Board tasks retain their admitted run identity. Leaving that board expires every queued step: a different run, a changed mode, or a menu screen. A terminal result on a board that is still standing expires only the steps that change the plant layout, because the drops it left behind are still there for collection. Parked steps stay parked during pause and retain their admitted card binding across preceding steps. A hostile crossing the chosen cell does not cancel the model's planting intent.
 
-Collection is a multi-action skill. `until:"visible_clear"` re-scans after every verified batch and continues until the requested visible semantic category is clear, including objects that appeared during execution. `what` covers `coins`, `resources`, `award`, and `usable_seed`; sun belongs to none of them. Visible usable seed packets include the plant's display name and mechanics, including backward fire toward lower columns, arming delay, and hypnosis on being eaten.
+Collection is a multi-action skill. `until:"visible_clear"` re-scans after every verified batch and continues until the requested visible semantic category is clear, including objects that appeared during execution. `what` covers `coins`, `resources`, `award`, and `usable_seed`; sun belongs to none of them. Visible usable seed packets include the plant's display name and mechanics, including backward fire toward lower columns, arming delay, hypnosis on being eaten, and non-attacking support effects. Pole-vaulting zombies distinguish carrying a usable pole, an active vault, and walking after losing the pole.
 
 ## Sun
 

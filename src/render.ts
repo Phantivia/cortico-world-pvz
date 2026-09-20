@@ -73,6 +73,9 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
   if (mechanics.area === 'backward_lane') facts.push('只攻击本排列号更小的敌人，应位于敌人右侧');
   if (mechanics.area === 'forward_and_backward_lane') facts.push('同时向前后射击');
   if (mechanics.effect === 'hypnotize_biting_zombie') facts.push('被吃后魅惑咬它的僵尸');
+  if (mechanics.effect === 'remove_metal_equipment') facts.push('吸走附近金属装备，自身不攻击');
+  if (mechanics.effect === 'convert_passing_peas_to_fire') facts.push('点燃穿过本格的豌豆，自身不攻击');
+  if (mechanics.effect === 'high_health_block_and_stop_vaulting') facts.push('阻挡并拦截撑杆跳跃');
   if (mechanics.effect === 'wake_sleeping_mushroom') facts.push('唤醒睡眠蘑菇');
   if (mechanics.effect === 'freeze_then_slow_zombies') facts.push('冻结全场后减速');
   if (mechanics.effect === 'damage_row_and_remove_ice_trails') facts.push('整排伤害并清冰道');
@@ -178,7 +181,9 @@ export function zombiePhaseLabel(phase: string | undefined): string {
   if (phase.startsWith('dancer_')) return '舞蹈动作中';
   if (phase.startsWith('bungee_')) return '蹦极动作中';
   if (phase.startsWith('digger_')) return phase.includes('retreating') ? '向右撤退' : '矿工动作中';
-  if (phase.startsWith('pole_vault')) return '撑杆动作中';
+  if (phase === 'pole_vault_ready') return '持杆，可跳跃';
+  if (phase === 'pole_vaulting') return '正在撑杆跳跃';
+  if (phase === 'pole_vault_spent') return '已丢杆，不能再跳';
   if (phase.startsWith('snorkel_')) return '潜水动作中';
   if (phase.startsWith('dolphin_')) return '海豚动作中';
   if (phase.startsWith('pogo_')) return '跳跃中';
