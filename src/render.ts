@@ -70,7 +70,7 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
   if (mechanics.trigger.endsWith('_awake')) facts.push('白天入睡，需咖啡豆唤醒');
   if (mechanics.area.startsWith('short_forward')) facts.push('短程');
   if (mechanics.area === 'centered_nearby_area') facts.push('周围近程');
-  if (mechanics.area === 'backward_lane') facts.push('向房子方向射击');
+  if (mechanics.area === 'backward_lane') facts.push('只攻击本排列号更小的敌人，应位于敌人右侧');
   if (mechanics.area === 'forward_and_backward_lane') facts.push('同时向前后射击');
   if (mechanics.effect === 'hypnotize_biting_zombie') facts.push('被吃后魅惑咬它的僵尸');
   if (mechanics.effect === 'wake_sleeping_mushroom') facts.push('唤醒睡眠蘑菇');

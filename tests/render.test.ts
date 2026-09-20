@@ -17,7 +17,7 @@ it('visible seed packets carry their localized names, direction, and activation 
     })),
   }) });
   for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
-    expect(rendered).toContain('左向豌豆射手；向房子方向射击');
+    expect(rendered).toContain('左向豌豆射手；只攻击本排列号更小的敌人，应位于敌人右侧');
     expect(rendered).toContain('魅惑菇；白天入睡，需咖啡豆唤醒；被吃后魅惑咬它的僵尸');
     expect(rendered).toContain('土豆雷；种下后准备较久；一次性');
   }
