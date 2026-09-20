@@ -615,6 +615,14 @@ export class PvzExecutor {
   private finish(task: QueuedTask, report: PvzTaskReport): void {
     if (task.terminal) return;
     task.terminal = true;
+    if (report.kind === 'blocked' || report.kind === 'unverified') {
+      const prior = report.steps.filter(step =>
+        step.outcome === 'done' || step.outcome === 'noop' || step.outcome === 'partial' || step.outcome === 'yield');
+      if (prior.length) report = {
+        ...report,
+        text: `${report.text}\n[此前步骤] ${prior.map(step => `第${step.step}步 ${step.text}`).join('；')}`,
+      };
+    }
     this.opts.diagnostic?.({
       phase: 'task.terminal', taskId: task.id, outcome: report.kind,
       ageMs: this.now() - task.enqueuedAt,

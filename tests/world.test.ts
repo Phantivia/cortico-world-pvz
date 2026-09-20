@@ -648,6 +648,12 @@ describe('PvzWorld 工具流程', () => {
       } else {
         expect(transport.state.board!.collectibles.map(item => item.id)).toEqual([3]);
         expect(await callTool(world, 'pvz_queue')).toContain('第 4/6 步受阻');
+        if (scenario === 'expired') {
+          const report = host.events.find(({ event }) => event.type === 'pvz.task')!.event.text;
+          expect(report).toContain('第3步 当前没有可见可用种子包');
+          expect(report).toContain('第2步 特殊操作 launch 已完成');
+          expect(await callTool(world, 'pvz_queue')).toContain('第3步 当前没有可见可用种子包');
+        }
       }
     } finally { await world.stop(); }
   });
