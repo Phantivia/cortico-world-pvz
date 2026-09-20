@@ -2050,6 +2050,7 @@ struct ZombieView {
 struct GridItemView {
     uint32_t id;
     int type;
+    int state;
     int row;
     int column;
     int potContentType;
@@ -2967,7 +2968,7 @@ bool ReadBoard(uintptr_t lawnApp, int mode, BoardView& view,
             !FogAllowsZombie(view.address, 0, view.background, x, row)) return;
         const uint32_t publicId = PublicObjectId(
             view.address, view.mainCounter, EntityKind::GridItem, id);
-        view.gridItems.push_back({publicId, type, row, column, Field<int>(item, 0x44),
+        view.gridItems.push_back({publicId, type, Field<int>(item, 0x0C), row, column, Field<int>(item, 0x44),
                                   Field<int>(item, 0x40), Field<int>(item, 0x3C),
                                   Field<int>(item, 0x4C), Field<int>(item, 0x50)});
     });
@@ -4773,7 +4774,7 @@ void AppendGridItems(std::string& output, const BoardView& board) {
         AppendInt(output, item.column + 1);
         if (item.type == 7) {
             output += ",\"visibleHint\":";
-            AppendString(output, item.potContentType == 1 ? "plant" : "unknown");
+            AppendString(output, item.state == 4 ? "plant" : item.state == 5 ? "zombie" : "unknown");
         }
         if (item.type == 7 && item.transparentCounter > 0) {
             if (item.potContentType == 1 && item.seedType >= 0 && item.seedType < 53) {

@@ -212,8 +212,9 @@ returns to normal. Ordinary rendered fog filters dynamic occupancy before serial
 `playable: null`,
 `blocker: fog_hidden`, and
 `base: unknown`, and planting may still be attempted using only static terrain and card readiness.
-Vase contents are emitted only while the pot transparency counter is positive; an opaque
-non-plant vase remains `unknown`. Persistent condition bands follow visible damage art: ordinary
+Vase markings come from the grid-item state (question, leaf, or zombie), independently of
+concealed contents. Contents are emitted only while the pot transparency counter is positive;
+an opaque unmarked vase remains `unknown`. Persistent condition bands follow visible damage art: ordinary
 zombie body state uses actual arm/head loss, and only plants and zombie types with damage sprites
 expose health-derived bands. Plants also expose the visible PlantState phase, including Potato Mine
 arming, armed, and triggered states. Zombies expose a visible action phase and one categorical

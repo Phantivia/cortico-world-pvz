@@ -8,6 +8,37 @@ import { boardState, shovelTutorialBoard, snapshot } from './helpers.ts';
 import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
+it('renders vase markings and only disclosed contents across observation surfaces', () => {
+  const state = snapshot({ screen: 'board', mode: 51, modeKind: 'vasebreaker', board: boardState({
+    gridItems: [
+      { id: 1, kind: 'vase', row: 1, column: 5, visibleHint: 'plant' },
+      { id: 2, kind: 'vase', row: 1, column: 6, visibleHint: 'unknown' },
+      { id: 3, kind: 'vase', row: 1, column: 7, visibleHint: 'zombie' },
+      { id: 4, kind: 'vase', row: 2, column: 5, visibleHint: 'unknown',
+        revealedContent: { kind: 'plant', type: 0, name: 'peashooter' } },
+      { id: 5, kind: 'vase', row: 2, column: 6, visibleHint: 'unknown',
+        revealedContent: { kind: 'zombie', type: 23, name: 'gargantuar' } },
+      { id: 6, kind: 'vase', row: 2, column: 7, visibleHint: 'unknown',
+        revealedContent: { kind: 'sun', count: 3 } },
+    ],
+  }) });
+  const render = () => [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))];
+  for (const text of render()) {
+    expect(text).toContain('花瓶（绿色植物罐）');
+    expect(text).toContain('花瓶（内容未知）');
+    expect(text).toContain('花瓶（僵尸标记）');
+    expect(text).toContain('花瓶（透视：豌豆射手）');
+    expect(text).toContain('花瓶（透视：巨人僵尸）');
+    expect(text).toContain('花瓶（透视：阳光×3）');
+  }
+  state.board!.cells.filter(cell => cell.row === 2).forEach(cell => {
+    cell.playable = null; cell.blocker = 'fog_hidden';
+  });
+  for (const text of render()) expect(text).not.toContain('透视');
+  state.board!.disclosure.entitiesVisible = false;
+  for (const text of render()) expect(text).not.toContain('绿色植物罐');
+});
+
 it('renders a squished mower as destroyed across every observation surface', () => {
   const state = snapshot({ screen: 'board', board: boardState({
     mowers: [{ row: 1, kind: 'roof_cleaner', state: 'squished' }],

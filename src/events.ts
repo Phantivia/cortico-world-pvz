@@ -30,6 +30,7 @@ import {
   renderTacticalSnapshot,
   zombiePhaseLabel,
   renderBossProjectile,
+  gridItemDescription,
 } from './render.ts';
 import { semanticMenuTarget } from './semantic.ts';
 import {
@@ -316,6 +317,23 @@ export function trackSnapshot(
   }
 
   const oldZombies = new Map((before.board?.zombies ?? []).map((z) => [z.id, z]));
+  if (entityContinuity) {
+    const oldVases = new Map(before.board!.gridItems.filter(item => item.kind === 'vase')
+      .map(item => [item.id, item]));
+    const changedVases = after.board!.gridItems.filter(item => {
+      const old = oldVases.get(item.id);
+      if (item.kind !== 'vase' || !old || gridItemDescription(old) === gridItemDescription(item)) return false;
+      return [before, after].every(state => state.board!.cells.some(cell =>
+        cell.row === item.row && cell.column === item.column && cell.playable !== null
+          && cell.blocker !== 'fog_hidden' && cell.blocker !== 'dark_hidden'));
+    });
+    if (changedVases.length) events.push({
+      type: 'pvz.vase.changed',
+      text: `[PvZ] 罐子可见信息变化：${changedVases.map(item =>
+        `${cellText(item.row, item.column)}${gridItemDescription(item)}`).join('；')}`,
+      urgent: true, senderKey: 'pvz.vase',
+    });
+  }
   if (entityContinuity) {
     const boss = after.board!.boss;
     const oldBoss = before.board!.boss;

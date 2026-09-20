@@ -11,6 +11,28 @@ import { renderWhackSkillQueueCall } from '../src/tools.ts';
 import { boardState, snapshot } from './helpers.ts';
 import { renderSnapshot, renderTacticalSnapshot, compactSnapshot } from '../src/render.ts';
 
+it('reports vase transparency changes once and suppresses hidden observations', () => {
+  const before = snapshot({ screen: 'board', mode: 51, modeKind: 'vasebreaker', board: boardState({
+    gridItems: [{ id: 1, kind: 'vase', row: 1, column: 5, visibleHint: 'unknown' }],
+  }) });
+  const revealed = structuredClone(before);
+  revealed.board!.gridItems[0]!.revealedContent = { kind: 'plant', type: 0, name: 'peashooter' };
+  const changes = (after: typeof before, old: typeof before) => trackSnapshot(after, old)
+    .filter(event => event.type === 'pvz.vase.changed');
+  expect(changes(revealed, before)).toEqual([expect.objectContaining({
+    text: '[PvZ] 罐子可见信息变化：第1排第5列花瓶（透视：豌豆射手）', urgent: true,
+  })]);
+  expect(changes(revealed, revealed)).toEqual([]);
+  expect(changes(before, revealed)).toEqual([expect.objectContaining({ text: expect.stringContaining('内容未知') })]);
+  const hidden = structuredClone(revealed);
+  hidden.board!.disclosure.entitiesVisible = false;
+  expect(changes(hidden, before)).toEqual([]);
+  hidden.board!.disclosure.entitiesVisible = true;
+  hidden.board!.cells.find(cell => cell.row === 1 && cell.column === 5)!.playable = null;
+  expect(changes(hidden, before)).toEqual([]);
+  expect(changes(revealed, hidden)).toEqual([]);
+});
+
 it('僵王动作变化分别描述头部伸入、瞄准、吐球与收回', () => {
   let before = snapshot({ screen: 'board', mode: 35, board: boardState({ boss: {
     phase: 'boss_idle', immobilized: false, projectile: null,

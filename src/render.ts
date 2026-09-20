@@ -266,6 +266,21 @@ function gridItemLabel(kind: string): string {
   } as Record<string, string>)[kind] ?? '可见格子物件';
 }
 
+export function gridItemDescription(item: PvzBoardState['gridItems'][number]): string {
+  if (item.kind !== 'vase') return gridItemLabel(item.kind);
+  const facts: string[] = [];
+  if (item.visibleHint === 'plant') facts.push('绿色植物罐');
+  else if (item.visibleHint === 'zombie') facts.push('僵尸标记');
+  const content = item.revealedContent;
+  if (content) {
+    const name = content.kind === 'sun' ? `阳光×${content.count}`
+      : content.kind === 'plant' ? plantDisplayNameOf(content.type, content.name)
+        : zombieDisplayNameOf(content.type, content.name);
+    facts.push(`透视：${name}`);
+  } else if (!facts.length) facts.push('内容未知');
+  return `花瓶（${facts.join('；')}）`;
+}
+
 export function blockerLabel(blocker: string): string {
   return ({
     requires_lily_pad: '需要荷叶', requires_flower_pot: '需要花盆', occupied: '已占用',
@@ -302,7 +317,7 @@ function boardCellLabel(board: PvzBoardState, row: number, column: number): stri
   const others = plants.filter((plant) =>
     !CARRIER_TYPES.has(plant.type) && plant.type !== PUMPKIN_TYPE);
   const items = board.gridItems.filter((item) => item.row === row && item.column === column)
-    .map((item) => gridItemLabel(item.kind));
+    .map(gridItemDescription);
   const onCarrier = carriers.map((carrier) => `${CARRIER_TYPES.get(carrier.type)}上`);
   const contents = [
     ...others.map((plant) => cellPlantLabel(plant, onCarrier)),
@@ -336,7 +351,7 @@ function semanticBoardMatrix(board: PvzBoardState): string[][] {
         ...sortedByCell(board.plants.filter((plant) =>
           plant.row === row && plant.column === column)).map((plant) => cellPlantLabel(plant)),
         ...board.gridItems.filter((item) => item.row === row && item.column === column)
-          .map((item) => gridItemLabel(item.kind)),
+          .map(gridItemDescription),
       ];
       if (contents.length) return `${terrainLabel(cell.terrain)}·${contents.join('+')}`;
       if (cell.blocker) return `${terrainLabel(cell.terrain)}·${blockerLabel(cell.blocker)}`;

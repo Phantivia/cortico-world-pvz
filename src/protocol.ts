@@ -115,7 +115,9 @@ export interface PvzGridItem {
   row: number;
   /** A portal at the visible right boundary uses board.columns + 1. */
   column: number;
+  /** Drawn vase marking; concealed contents never determine this hint. */
   visibleHint?: 'unknown' | 'plant' | 'zombie';
+  /** Present only while the game draws the contents through the vase. */
   revealedContent?:
     | { kind: 'plant' | 'zombie'; type: number; name: string }
     | { kind: 'sun'; count: number };
