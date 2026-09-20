@@ -543,6 +543,33 @@ describe('PvzWorld 工具流程', () => {
     } finally { await world.stop(); }
   });
 
+  it.each([17, 0])('named packet pickup preserves the held identity before launch: %s', async heldType => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 58, menu: [], board: boardState({
+      cursor: { kind: 'usable_seed', heldType, logicalX: 100, logicalY: 100 },
+      allowedSpecialActions: ['launch'], special: { phase: 'packet_held', settled: true,
+        targets: [{ action: 'launch', kind: 'cell', id: null, slot: null, row: 2, column: 2 }] },
+    }) }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'special' || action.action !== 'launch') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'usable_seed_consumed' };
+      fake.publish(draft => {
+        draft.board!.plants = [{ id: 100, type: heldType, name: heldType === 17 ? 'squash' : 'peashooter',
+          row: action.row!, column: action.column!, phase: 'idle', condition: 'intact', sleeping: false, squished: false, layers: [] }];
+        draft.board!.cursor = { kind: 'normal', heldType: null, logicalX: 100, logicalY: 100 };
+        draft.board!.allowedSpecialActions = [];
+        draft.board!.special = null;
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', { steps: [{ skill: 'collect', what: 'usable_seed', plant: 'squash' },
+        { skill: 'special', action: 'launch', at: { row: 2, column: 2 } }] });
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'), 3000);
+      expect(transport.state.board!.plants.map(plant => plant.name)).toEqual(heldType === 17 ? ['squash'] : []);
+      if (heldType !== 17) expect(transport.state.board!.cursor.heldType).toBe(heldType);
+    } finally { await world.stop(); }
+  });
+
   it.each(['complete', 'blocked', 'expired', 'placement', 'relative'] as const)('种子包成对连续部署：%s', async (scenario) => {
     const packets = [
       { id: 1, type: 0, name: 'peashooter' },

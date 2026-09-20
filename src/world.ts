@@ -968,6 +968,12 @@ export class PvzWorld implements World {
           ? { outcome: 'done', text: `已收集 ${collected} 个目标，界面随后推进` }
           : { outcome: 'blocked', text: '当前没有可收集的棋盘' };
       }
+      if (step.what === 'usable_seed' && board.cursor.kind === 'usable_seed') {
+        if (step.plant && board.cursor.heldType === plantTypeOf(step.plant)) {
+          return { outcome: 'noop', text: `已手持${pvzSeedSelectorDisplayName(step.plant)}种子包` };
+        }
+        return { outcome: 'blocked', text: '当前已手持其他或未指定种类的种子包，先放置或取消再拾取' };
+      }
       const selected = selectCollectibleIds(board, step.what, step.plant);
       const byId = new Map(board.collectibles.map((item) => [item.id, item]));
       const ordinary = selected.filter((id) => !isTerminalCollectible(byId.get(id)!.kind));

@@ -41,6 +41,60 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('fires two packet rescues as new drops arrive and resolves enemies after pickup', async () => {
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 58, menu: [], board: boardState() }));
+    let nextPlantId = 100;
+    transport.actionHandler = (action, fake) => {
+      if (action.kind === 'collect') {
+        fake.nativeResult = { outcome: 'executed', effect: 'collectibles_collected' };
+        fake.publish(draft => {
+          const board = draft.board!;
+          board.collectibles = [];
+          board.cursor = { kind: 'usable_seed', heldType: 17, logicalX: 300, logicalY: 200 };
+          board.zombies[0]!.column = 3;
+          board.zombies[0]!.columnPosition = 2.8;
+          board.allowedSpecialActions = ['launch'];
+          board.special = { phase: 'packet_held', settled: true, targets: [1, 2, 3, 4].map(column => ({
+            action: 'launch', kind: 'cell', id: null, slot: null, row: 2, column,
+          })) };
+        });
+      } else if (action.kind === 'special' && action.action === 'launch') {
+        fake.nativeResult = { outcome: 'executed', effect: 'usable_seed_consumed' };
+        fake.publish(draft => {
+          const board = draft.board!;
+          board.plants = [{ id: nextPlantId++, type: 17, name: 'squash', row: action.row!, column: action.column!,
+            phase: 'idle', condition: 'intact', sleeping: false, squished: false, layers: [] }];
+          board.cursor = { kind: 'normal', heldType: null, logicalX: 100, logicalY: 100 };
+          board.allowedSpecialActions = [];
+          board.special = null;
+        });
+      }
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_arm', {
+        when: { all: [{ collectible: { kind: 'usable_seed', plant: 'squash' } }, { zombie: { row: 2, maxColumn: 5 } }] },
+        steps: [{ skill: 'collect', what: 'usable_seed', plant: 'squash' },
+          { skill: 'special', action: 'launch', placement: { row: 2, aheadOf: 'nearest_hostile', minGap: 1 } }],
+        queue: 'append', maxFirings: 2,
+      })).toContain('已武装');
+      expect(transport.state.board!.plants).toEqual([]);
+      for (const id of [1, 2]) {
+        transport.publish(draft => {
+          draft.board!.collectibles = [{ id, kind: 'usable_seed', containedType: 17, containedName: 'squash', x: 300, y: 200, row: 2, column: 4 }];
+          draft.board!.zombies = [{ id, type: 18, name: 'pogo', row: 2, column: 5, columnPosition: 4.6,
+            xBand: 'mid', speedCellsPerSecond: 0.5, phase: 'pogo_bouncing', condition: 'intact',
+            armor: 'none', shield: 'none', hypnotized: false, slowed: false, immobilized: false }];
+          draft.board!.plants = [];
+        });
+        await afterTimers(180);
+        expect(transport.state.board!.plants.map(plant => [plant.name, plant.row, plant.column])).toEqual([['squash', 2, 2]]);
+        expect(transport.state.board!.collectibles).toEqual([]);
+      }
+      expect(host.events.filter(({ event }) => event.type === 'pvz.trigger' && event.text.includes('打响'))).toHaveLength(2);
+    } finally { await world.stop(); }
+  });
+
   it('waits for later packets without spending firings or consuming another trigger reservation', async () => {
     const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
       affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
