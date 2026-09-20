@@ -22,7 +22,8 @@ export interface PvzCellSelector {
 
 export type PvzSeedSelector = PvzPlantName | { plant: 'imitater'; imitates: PvzPlantName };
 
-export type PvzPlantColumn = number | { aheadOf: 'nearest_hostile'; minGap: number };
+export type PvzPlantColumn = number | { aheadOf: 'nearest_hostile'; minGap: number }
+  | { emptyPot: 'nearest_house' };
 
 export interface PvzSpecialEntityTargetSelector {
   kind: 'plant' | 'zombie' | 'grid_item' | 'collectible';
@@ -103,6 +104,7 @@ export function describePvzStep(step: PvzDoStep): string {
 
 export function describePvzPlantPosition(row: number, column: PvzPlantColumn): string {
   if (typeof column === 'number') return cellText(row, column);
+  if ('emptyPot' in column) return `${rowText(row)}最靠近房子的可见空花盆`;
   return column.minGap === 0
     ? `${rowText(row)}最近敌对僵尸脚下那格起第一个能下的格`
     : `${rowText(row)}最近敌对僵尸脚下往屋方向第${column.minGap}格起第一个能下的格`;
@@ -269,11 +271,14 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
   if (integer(value.column, 1, 9)) column = value.column;
   else {
     const relative = object(value.column);
-    if (!relative || keys(relative, ['aheadOf', 'minGap'])
-      || relative.aheadOf !== 'nearest_hostile' || !integer(relative.minGap, 0, 8)) {
-      return { error: `第 ${index} 步 column 必须是 1–9 或 {aheadOf:"nearest_hostile",minGap:0–8}` };
+    if (relative && !keys(relative, ['emptyPot']) && relative.emptyPot === 'nearest_house') {
+      column = { emptyPot: 'nearest_house' };
+    } else if (relative && !keys(relative, ['aheadOf', 'minGap'])
+      && relative.aheadOf === 'nearest_hostile' && integer(relative.minGap, 0, 8)) {
+      column = { aheadOf: 'nearest_hostile', minGap: relative.minGap };
+    } else {
+      return { error: `第 ${index} 步 column 必须是 1–9、{aheadOf:"nearest_hostile",minGap:0–8} 或 {emptyPot:"nearest_house"}` };
     }
-    column = { aheadOf: 'nearest_hostile', minGap: relative.minGap };
   }
   const when = value.when ?? 'now';
   if (!['now', 'ready', 'ready_and_affordable'].includes(String(when))) {

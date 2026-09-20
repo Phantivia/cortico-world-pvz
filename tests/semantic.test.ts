@@ -12,6 +12,7 @@ import {
   selectSunIds,
   semanticCards,
   semanticMenuTarget,
+  emptyFlowerPotCells,
   type PvzSemanticSpecialRequest,
 } from '../src/semantic.ts';
 import type {
@@ -20,6 +21,20 @@ import type {
   PvzSpecialTarget,
 } from '../src/protocol.ts';
 import { boardState, snapshot } from './helpers.ts';
+
+it('selects only disclosed, empty, unsquished flower pots on usable cells in house order', () => {
+  const pot = (column: number) => ({ id: column, type: 33, name: 'flower_pot', row: 1, column,
+    condition: 'intact' as const, sleeping: false, squished: false, layers: [] });
+  const board = boardState({ background: 5, plants: [pot(6), pot(5), pot(4), pot(3), pot(2), pot(1),
+    { ...pot(1), id: 20, type: 39, name: 'melon_pult' },
+  ] });
+  board.plants.find(plant => plant.column === 3)!.squished = true;
+  board.cells.find(cell => cell.row === 1 && cell.column === 4)!.blocker = 'ice_trail';
+  board.cells.find(cell => cell.row === 1 && cell.column === 5)!.playable = null;
+  expect(emptyFlowerPotCells(board)).toEqual([{ row: 1, column: 2 }, { row: 1, column: 6 }]);
+  board.disclosure.entitiesVisible = false;
+  expect(emptyFlowerPotCells(board)).toEqual([]);
+});
 
 function target(
   action: string,

@@ -25,6 +25,17 @@ export function bossHeadVulnerable(phase: string): boolean {
   return ['boss_aiming', 'boss_spitting', 'boss_recovering'].includes(phase);
 }
 
+export function emptyFlowerPotCells(board: PvzBoardState): PvzSemanticCell[] {
+  if (!board.disclosure.entitiesVisible) return [];
+  return board.plants.filter(plant => plant.type === 33 && !plant.squished
+    && !board.plants.some(other => other.row === plant.row && other.column === plant.column
+      && other.type !== 33 && other.type !== 30 && !other.squished)
+    && board.cells.some(cell => cell.row === plant.row && cell.column === plant.column
+      && cell.playable === true && !['ice_trail', 'fog_hidden', 'dark_hidden'].includes(cell.blocker ?? '')))
+    .map(plant => ({ row: plant.row, column: plant.column }))
+    .sort((left, right) => left.row - right.row || left.column - right.column);
+}
+
 export type PvzSemanticErrorCode =
   | 'board_unavailable'
   | 'invalid_selector'

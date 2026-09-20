@@ -62,6 +62,7 @@ import {
   resolveSemanticSpecialAction,
   selectCollectibleIds,
   selectSunIds,
+  emptyFlowerPotCells,
 } from './semantic.ts';
 import {
   describePvzStep,
@@ -710,8 +711,13 @@ export class PvzWorld implements World {
       const plantLabel = pvzSeedSelectorDisplayName(step.plant);
       const board = this.requireBoard(true);
       const row = integerArg(step.row, 'row', 1, board.rows);
-      const column = typeof step.column === 'number'
-        ? integerArg(step.column, 'column', 1, board.columns) : step.column;
+      let column = step.column;
+      if (typeof column === 'number') column = integerArg(column, 'column', 1, board.columns);
+      else if ('emptyPot' in column) {
+        const pot = emptyFlowerPotCells(board).find(cell => cell.row === row);
+        if (!pot) return { outcome: 'yield', text: `${rowText(row)}当前没有可见空花盆，已跳过 ${plantLabel}` };
+        column = pot.column;
+      }
       const position = describePvzPlantPosition(row, column);
       const cell = typeof column === 'number'
         ? board.cells.find((item) => item.row === row && item.column === column) : null;

@@ -22,6 +22,7 @@ import {
   localizedCardDisplay,
   semanticMenuTarget,
   bossHeadVulnerable,
+  emptyFlowerPotCells,
 } from './semantic.ts';
 import { progressFilteredSeedChoices } from './unlocks.ts';
 
@@ -521,11 +522,7 @@ function renderBoardCards(board: PvzBoardState): string[] {
 
 function emptyFlowerPots(board: PvzBoardState): string[] {
   if (!board.disclosure.entitiesVisible || !board.boss) return [];
-  const pots = sortedByCell(board.plants.filter(plant => plant.type === 33 && !plant.squished
-    && !board.plants.some(other => other.row === plant.row && other.column === plant.column
-      && other.type !== 33 && other.type !== 30 && !other.squished)
-    && board.cells.some(cell => cell.row === plant.row && cell.column === plant.column
-      && cell.playable !== null && !['ice_trail', 'fog_hidden', 'dark_hidden'].includes(cell.blocker ?? ''))));
+  const pots = emptyFlowerPotCells(board);
   return [pots.length ? `空花盆落点：${pots.map(pot => cellText(pot.row, pot.column)).join('、')}` : '空花盆落点：无'];
 }
 

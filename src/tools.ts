@@ -121,8 +121,13 @@ const PVZ_STEP_SCHEMA = {
               minGap: { type: 'integer', minimum: 0, maximum: 8 },
             },
             required: ['aheadOf', 'minGap'], additionalProperties: false,
+          }, {
+            type: 'object',
+            properties: { emptyPot: { type: 'string', enum: ['nearest_house'] } },
+            required: ['emptyPot'], additionalProperties: false,
           }],
-          description: '相对列在真正输入时才锁目标、落子前再重算：minGap 是下限，从该排最近敌对僵尸脚下那格往屋方向数 minGap 格起，取第一个能下这株植物的格，0 即从它脚下那格起（它正在啃的那株所在格不能下，就落到前一格）。'
+          description: '{emptyPot:"nearest_house"} 在本步执行前选该排最靠房子的可见空花盆；没有就跳过，不补盆、不换排，回执给出实际落点。屋顶投手、冰菇与辣椒可用此选择器。'
+            + '相对列在真正输入时才锁目标、落子前再重算：minGap 是下限，从该排最近敌对僵尸脚下那格往屋方向数 minGap 格起，取第一个能下这株植物的格，0 即从它脚下那格起（它正在啃的那株所在格不能下，就落到前一格）。'
             + '数到棋盘外夹在第 1 列；目标消失、这排没有能下的格或卡片没准备好时这一步跳过并返回原因，后面的步骤照做；不自动换目标或换排。',
         },
         when: {
