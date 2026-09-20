@@ -221,6 +221,8 @@ Each model response may submit one `pvz_do` skill queue. Special actions other t
 
 `launch` accepts an exact `at:{row,column}` or `placement:{row,edge:"nearest_house"|"farthest_house"}`. The placement selector uses the held packet's current legal targets in the chosen row. It does not change rows when none are available; the receipt names the actual cell. A held usable packet retains its mechanics in observations until placed or cancelled.
 
+The environment instructions describe vase risk by the current firing direction: a backward shooter covers vases on its left, and a Threepeater covers its own and adjacent lanes toward higher columns.
+
 ## Events and progression
 
 The 引擎子进程 projects lifecycle, screen, seed-picker, level start, visible progress, card readiness, close threats, mower use or loss, victory, defeat, award, and committed profile progress. Victory and defeat come from a persistent, monotonic run result rather than inference from the current screen; award and defeat screens are supporting evidence for the same result. The game-enforced unique visible player name scopes profile commits and mode-record baselines, so changing users cannot be reported as progress.
