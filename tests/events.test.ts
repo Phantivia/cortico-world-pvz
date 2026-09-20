@@ -502,7 +502,7 @@ describe('PvZ 事件驱动唤醒', () => {
     expect(exited.map((event) => event.type)).toEqual(['pvz.level.won']);
     expect(exited[0]?.text).toContain('adventure，第 1 关');
     expect(exited[0]?.text).toContain('[直播]');
-    expect(exited[0]?.text).toContain('下一轮处理奖励或失败菜单');
+    expect(exited[0]?.text).toContain('按当前状态处理奖励或失败菜单');
     expect(exited[0]?.text).not.toContain('结果 #');
 
     const awardDialog = snapshot({
@@ -928,6 +928,27 @@ describe('PvZ 事件驱动唤醒', () => {
     expect(trackSnapshot(after, before)).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: 'pvz.mower.used', text: '[PvZ] 防线触发：第1排割草机' }),
     ]));
+  });
+
+  it('publishes a trophy arriving after victory once while suppressing ordinary teardown drops', () => {
+    const won = snapshot({ screen: 'board', menu: [], board: boardState({ runId: 71, level: 50,
+      collectibles: [] }),
+      lastRun: { resultId: 5, runId: 71, mode: 0, level: 50, outcome: 'won' },
+    });
+    const dropped = structuredClone(won);
+    dropped.revision += 1;
+    dropped.board!.collectibles = [
+      { id: 1, kind: 'silver_sunflower', x: 600, y: 300, row: null, column: null },
+      { id: 2, kind: 'gold_coin', x: 200, y: 200, row: 2, column: 3 },
+    ];
+    expect(trackSnapshot(dropped, won)).toEqual([
+      expect.objectContaining({ type: 'pvz.collectible.appeared', urgent: true,
+        text: '[PvZ] 出现可收集对象：银向日葵奖杯' }),
+    ]);
+    expect(trackSnapshot(structuredClone(dropped), dropped)).toEqual([]);
+    const hidden = structuredClone(dropped);
+    hidden.board!.disclosure.entitiesVisible = false;
+    expect(trackSnapshot(hidden, won).some(event => event.type === 'pvz.collectible.appeared')).toBe(false);
   });
 
   it('关卡结算后棋盘拆场期间的割草机、卡片、植物变化不再当作战况报出', () => {

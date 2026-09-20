@@ -1,4 +1,4 @@
-import { isSunCollectible } from './collectibles.ts';
+import { isSunCollectible, isTerminalCollectible } from './collectibles.ts';
 import { profileProgressed, progressAdvanced, renderProgress } from './progress.ts';
 import {
   bandText,
@@ -59,7 +59,7 @@ export interface PvzEventMemory {
 }
 
 const LIVESTREAM_CUE = '\n[直播] 用一句不超过 30 个汉字的中文短句口播；不念坐标或内部状态。';
-const LIVESTREAM_TERMINAL_CUE = '\n[直播] 用一句不超过 30 个汉字的中文短句口播胜负；下一轮处理奖励或失败菜单。';
+const LIVESTREAM_TERMINAL_CUE = '\n[直播] 用一句不超过 30 个汉字的中文短句口播胜负；按当前状态处理奖励或失败菜单。';
 
 function withLivestreamCue(text: string): string {
   return `${text}${LIVESTREAM_CUE}`;
@@ -444,9 +444,12 @@ export function trackSnapshot(
 
   const oldCollectibles = new Set((before.board?.collectibles ?? []).map((item) => item.id));
   // 阳光不报:它由 World 自己收,模型没有收阳光的动作,报出来只是一条动不了的机会。
-  const appearedCollectibles = entityContinuity
+  const awardContinuity = sameBoardRun && runFinished && after.lastRun?.outcome === 'won'
+    && before.board!.disclosure.entitiesVisible && after.board!.disclosure.entitiesVisible;
+  const appearedCollectibles = entityContinuity || awardContinuity
     ? (after.board?.collectibles ?? []).filter((item) =>
-      !oldCollectibles.has(item.id) && !isSunCollectible(item.kind))
+      !oldCollectibles.has(item.id) && !isSunCollectible(item.kind)
+      && (!runFinished || isTerminalCollectible(item.kind)))
     : [];
   if (appearedCollectibles.length) {
     const ordinaryResources = new Set(['silver_coin', 'gold_coin', 'diamond']);

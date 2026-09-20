@@ -392,6 +392,7 @@ export function collectibleName(item: PvzBoardState['collectibles'][number]): st
     silver_coin: '银币', gold_coin: '金币', diamond: '钻石', sun: '阳光',
     small_sun: '小阳光', large_sun: '大阳光', seed_packet: '种子包', trophy: '奖杯',
     usable_seed: '可用种子包', chocolate: '巧克力', money_bag: '钱袋', present: '礼盒',
+    silver_sunflower: '银向日葵奖杯', gold_sunflower: '金向日葵奖杯',
   } as Record<string, string>)[item.kind] ?? '收集物';
   return item.containedName ? `${kind}(${item.containedName})` : kind;
 }

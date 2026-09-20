@@ -255,6 +255,7 @@ interactions so the model can choose and arm finite actions.
 - `pvz_arm` can use `collectible: { kind: "usable_seed" }` to queue one pickup when a visible packet appears. The trigger fires once; the held packet remains available for a later `launch` decision. Collectible conditions also support `minCount` and preserve unknown visibility under darkness or fog.
 - Seed pickup and collectible conditions accept `plant` to select a particular plant's packet. A missing match leaves other packet types untouched; omitting `plant` keeps the any-packet behavior.
 - Vasebreaker never transmits opaque vase contents.
+- Silver and gold sunflower trophies retain their names in observations and collection events. Awards appearing after victory still emit an urgent collection event. `collect what:"award"` claims them and advances to settlement.
 - Vase, roll, gem move, zombie placement, trophy purchase, onslaught transition, garden action, and cannon shot end their skill queue. Bowling and Zombiquarium purchases/feedings may share a finite queue; each step checks current targets and resources and verifies its result before the next step.
 - Beghouled waits for the board to settle after a swap or twist before comparing the matrix and score.
 - Twist targets contain four occupied cells within the eight-column puzzle. The target is the top-left cell of the clockwise 2×2 rotation.
