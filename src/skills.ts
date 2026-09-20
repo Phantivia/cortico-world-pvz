@@ -24,6 +24,7 @@ export type PvzSeedSelector = PvzPlantName | { plant: 'imitater'; imitates: PvzP
 
 export type PvzPlantColumn = number | { aheadOf: 'nearest_hostile'; minGap: number }
   | { emptyPot: 'nearest_house' };
+export type PvzPlantRow = number | { bossProjectile: 'iceball' | 'fireball' };
 
 export interface PvzSpecialEntityTargetSelector {
   kind: 'plant' | 'zombie' | 'grid_item' | 'collectible';
@@ -52,7 +53,7 @@ export type PvzDoStep =
   | {
       skill: 'plant';
       plant: PvzSeedSelector;
-      row: number;
+      row: PvzPlantRow;
       column: PvzPlantColumn;
       when: PvzPlantWhen;
     }
@@ -102,12 +103,13 @@ export function describePvzStep(step: PvzDoStep): string {
   return describeAction(step);
 }
 
-export function describePvzPlantPosition(row: number, column: PvzPlantColumn): string {
-  if (typeof column === 'number') return cellText(row, column);
-  if ('emptyPot' in column) return `${rowText(row)}最靠近房子的可见空花盆`;
+export function describePvzPlantPosition(row: PvzPlantRow, column: PvzPlantColumn): string {
+  const lane = typeof row === 'number' ? rowText(row) : `当前可见${row.bossProjectile === 'iceball' ? '冰球' : '火球'}所在排`;
+  if (typeof column === 'number') return `${lane}第${column}列`;
+  if ('emptyPot' in column) return `${lane}最靠近房子的可见空花盆`;
   return column.minGap === 0
-    ? `${rowText(row)}最近敌对僵尸脚下那格起第一个能下的格`
-    : `${rowText(row)}最近敌对僵尸脚下往屋方向第${column.minGap}格起第一个能下的格`;
+    ? `${lane}最近敌对僵尸脚下那格起第一个能下的格`
+    : `${lane}最近敌对僵尸脚下往屋方向第${column.minGap}格起第一个能下的格`;
 }
 
 function describeAction(step: PvzDoStep): string {
@@ -266,7 +268,13 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
       error: `第 ${index} 步 plant 必须是 canonical name 或 {plant:"imitater",imitates:<canonical name>}，禁止 id/slot`,
     };
   }
-  if (!integer(value.row, 1, 6)) return { error: `第 ${index} 步 row 不在棋盘范围内` };
+  let row: PvzPlantRow;
+  const rowSelector = object(value.row);
+  if (integer(value.row, 1, 6)) row = value.row;
+  else if (rowSelector && !keys(rowSelector, ['bossProjectile'])
+    && (rowSelector.bossProjectile === 'iceball' || rowSelector.bossProjectile === 'fireball')) {
+    row = { bossProjectile: rowSelector.bossProjectile };
+  } else return { error: `第 ${index} 步 row 必须是 1–6 或 {bossProjectile:"iceball"/"fireball"}` };
   let column: PvzPlantColumn;
   if (integer(value.column, 1, 9)) column = value.column;
   else {
@@ -284,7 +292,7 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
   if (!['now', 'ready', 'ready_and_affordable'].includes(String(when))) {
     return { error: `第 ${index} 步 when 只认 now/ready/ready_and_affordable` };
   }
-  return { step: { skill: 'plant', plant, row: value.row, column, when: when as PvzPlantWhen } };
+  return { step: { skill: 'plant', plant, row, column, when: when as PvzPlantWhen } };
 }
 
 function parseCollect(value: Record<string, unknown>, index: number): { step: PvzDoStep } | { error: string } {

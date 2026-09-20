@@ -41,6 +41,54 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('counters two later iceballs in their observed rows and skips a vanished or different projectile', async () => {
+    const card = { slot: 0, type: 20, name: 'jalapeno', imitates: null, cost: null, ready: true,
+      affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+      x: 150, y: 40 };
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
+      board: boardState({ background: 5, boss: { phase: 'boss_idle', immobilized: false, projectile: null },
+        cards: [card, { ...card, slot: 1 }, { ...card, slot: 2 }],
+        plants: [2, 5].map(row => ({ id: row, type: 33, name: 'flower_pot', row, column: row === 2 ? 1 : 3,
+          condition: 'intact', sleeping: false, squished: false, layers: [] })),
+      }),
+    }));
+    const burnedRows: number[] = [];
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant' || !('column' in action)) return;
+      expect(action.row).toBe(fake.state.board!.boss!.projectile!.row);
+      burnedRows.push(action.row);
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => {
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+        draft.board!.boss!.projectile = null;
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    const step = { skill: 'plant', plant: 'jalapeno', row: { bossProjectile: 'iceball' },
+      column: { emptyPot: 'nearest_house' } };
+    try {
+      await callTool(world, 'pvz_arm', { when: { bossProjectile: { kind: 'iceball' } },
+        steps: [step], maxFirings: 2 });
+      for (const row of [5, 2]) {
+        transport.publish(draft => { draft.board!.boss!.projectile = { kind: 'iceball', row, columnPosition: 6 }; });
+        await afterTimers(150);
+        expect(transport.state.board!.boss!.projectile).toBeNull();
+      }
+      expect(burnedRows).toEqual([5, 2]);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      await callTool(world, 'pvz_do', { steps: [step] });
+      await afterTimers(30);
+      transport.publish(draft => { draft.board!.boss!.projectile = { kind: 'fireball', row: 2, columnPosition: 5 }; });
+      await callTool(world, 'pvz_do', { steps: [step] });
+      await afterTimers(30);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      expect(transport.state.board!.boss!.projectile?.kind).toBe('fireball');
+      expect(host.events.filter(({ event }) => event.type === 'pvz.task' && event.text.includes('当前没有可见冰球')))
+        .toHaveLength(2);
+    } finally { await world.stop(); }
+  });
+
   it('uses exactly two conveyor packets across two thaws and leaves the third packet unused', async () => {
     const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
       affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,

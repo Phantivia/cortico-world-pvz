@@ -710,7 +710,15 @@ export class PvzWorld implements World {
       const plant = pvzSeedSelectorName(step.plant);
       const plantLabel = pvzSeedSelectorDisplayName(step.plant);
       const board = this.requireBoard(true);
-      const row = integerArg(step.row, 'row', 1, board.rows);
+      let row: number;
+      if (typeof step.row === 'number') row = integerArg(step.row, 'row', 1, board.rows);
+      else {
+        const projectile = board.disclosure.entitiesVisible ? board.boss?.projectile : null;
+        if (!projectile || projectile.kind !== step.row.bossProjectile) {
+          return { outcome: 'yield', text: `当前没有可见${step.row.bossProjectile === 'iceball' ? '冰球' : '火球'}，已跳过 ${plantLabel}` };
+        }
+        row = projectile.row;
+      }
       let column = step.column;
       if (typeof column === 'number') column = integerArg(column, 'column', 1, board.columns);
       else if ('emptyPot' in column) {
@@ -2364,7 +2372,7 @@ function plantCellNotes(board: PvzBoardState, steps: readonly PvzDoStep[]): stri
   const notes: string[] = [];
   const carriersPlaced = new Set<string>();
   steps.forEach((step, index) => {
-    if (step.skill !== 'plant' || typeof step.column !== 'number') return;
+    if (step.skill !== 'plant' || typeof step.row !== 'number' || typeof step.column !== 'number') return;
     const type = plantTypeOf(typeof step.plant === 'string' ? step.plant : step.plant.imitates);
     if (type === null) return;
     const key = `${step.row},${step.column}`;

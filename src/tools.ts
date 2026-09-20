@@ -113,6 +113,14 @@ const PVZ_STEP_SCHEMA = {
           ],
         },
         ...CELL_PROPERTIES,
+        row: {
+          oneOf: [CELL_PROPERTIES.row, {
+            type: 'object',
+            properties: { bossProjectile: { type: 'string', enum: ['iceball', 'fireball'] } },
+            required: ['bossProjectile'], additionalProperties: false,
+          }],
+          description: '排号，或执行时当前可见的指定冰火球所在排。球消失或类型不同则跳过本步。反制冰球可与 column:{emptyPot:"nearest_house"} 合用。',
+        },
         column: {
           oneOf: [CELL_PROPERTIES.column, {
             type: 'object',

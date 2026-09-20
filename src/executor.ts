@@ -11,6 +11,7 @@ import {
   type PvzQueueMode,
   type PvzSeedSelector,
   type PvzPlantColumn,
+  type PvzPlantRow,
 } from './skills.ts';
 
 export type PvzStepOutcome = 'done' | 'noop' | 'partial' | 'yield' | 'blocked' | 'unverified';
@@ -97,7 +98,7 @@ export interface PvzQueueStatus {
   reservations: Array<{
     taskId: number;
     plant: string;
-    at: { row: number; column: PvzPlantColumn };
+    at: { row: PvzPlantRow; column: PvzPlantColumn };
     waitingFor: Exclude<PvzPlantWhen, 'now'>;
     reservedCard: PvzReservedCardView;
     followingSteps: string[];
@@ -148,7 +149,7 @@ interface PlantReservation {
   kind: 'plant';
   task: QueuedTask;
   plant: string;
-  at: { row: number; column: PvzPlantColumn };
+  at: { row: PvzPlantRow; column: PvzPlantColumn };
   waitingFor: Exclude<PvzPlantWhen, 'now'>;
 }
 
