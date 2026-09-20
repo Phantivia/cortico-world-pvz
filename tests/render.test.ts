@@ -10,7 +10,7 @@ import { PLANT_NAMES } from '../src/names.ts';
 import type { PvzCard, PvzSeedChoice } from '../src/protocol.ts';
 
 it('visible seed packets carry their localized names, direction, and activation mechanics', () => {
-  const names = ['leftpeater', 'hypno_shroom', 'potato_mine', 'torchwood', 'magnet_shroom', 'tall_nut', 'spikeweed', 'spikerock', 'threepeater'] as const;
+  const names = ['leftpeater', 'hypno_shroom', 'potato_mine', 'torchwood', 'magnet_shroom', 'tall_nut', 'spikeweed', 'spikerock', 'threepeater', 'wall_nut'] as const;
   const state = snapshot({ screen: 'board', mode: 53, board: boardState({
     collectibles: names.map((name, index) => ({
       id: index + 1, kind: 'usable_seed', containedType: PLANT_NAMES.indexOf(name),
@@ -27,6 +27,8 @@ it('visible seed packets carry their localized names, direction, and activation 
     expect(rendered).toContain('地刺；只伤害踩在本格的地面敌人，不阻挡');
     expect(rendered).toContain('地刺王；只伤害踩在本格的地面敌人，不阻挡');
     expect(rendered).toContain('三线射手；向较大列号射击，覆盖本排和相邻排');
+    expect(rendered).toContain('坚果；阻挡，自身不攻击；同排右邻地刺可伤害啃食者');
+    expect(rendered).toContain('同排左邻坚果可把敌人留在地刺上');
   }
 });
 
