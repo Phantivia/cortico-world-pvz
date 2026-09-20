@@ -1096,6 +1096,15 @@ bool InternalMouseDispatchSignature() {
                      sizeof(pvz::widgetManager::mouseUpSignature));
 }
 
+template <typename Dispatch>
+bool DispatchWithWidgetFocus(uintptr_t manager, Dispatch&& dispatch) {
+    uint8_t previous = 0;
+    if (!SafeRead(manager + pvz::widgetManager::hasFocus, previous) ||
+        !SafeWrite(manager + pvz::widgetManager::hasFocus, uint8_t{1})) return false;
+    const bool result = dispatch();
+    return SafeWrite(manager + pvz::widgetManager::hasFocus, previous) && result;
+}
+
 bool DispatchInternalMouse(WPARAM rawAction, LPARAM lParam) {
     const auto action = static_cast<InternalMouseAction>(rawAction);
     if (action != InternalMouseAction::Move &&
@@ -1123,8 +1132,12 @@ bool DispatchInternalMouse(WPARAM rawAction, LPARAM lParam) {
                                      action == InternalMouseAction::RightDown
         ? pvz::widgetManager::mouseDown
         : pvz::widgetManager::mouseUp;
-    return reinterpret_cast<MouseButtonFunction>(buttonFunction)(
-        reinterpret_cast<void*>(manager), x, y, clickCount);
+    // ButtonWidget ignores release while its manager lacks focus. Internal input
+    // borrows that flag only during dispatch on the window thread.
+    return DispatchWithWidgetFocus(manager, [&]() {
+        return reinterpret_cast<MouseButtonFunction>(buttonFunction)(
+            reinterpret_cast<void*>(manager), x, y, clickCount);
+    });
 }
 
 bool PhysicalMouseMessage(UINT message) {

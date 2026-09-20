@@ -82,6 +82,10 @@ sound-effect volumes and explicit pause controls remain independent. This policy
 window that loses foreground focus. A minimized window remains subject to the original framework's
 suspended game updates, so the managed client must remain restored.
 
+Game-local button dispatch temporarily sets the widget manager's focus flag, which ordinary
+menu buttons require before accepting a release. Dispatch restores the flag before returning
+on the window thread and does not change the Windows foreground window.
+
 After launch or recovery attach, the injector waits for the top-level
 game window and restores an exact 800 by 600 physical-pixel client area. The managed window
 procedure repeats that repair after a per-monitor DPI transition and recalculates the non-client

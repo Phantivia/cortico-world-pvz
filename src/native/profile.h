@@ -44,6 +44,7 @@ constexpr size_t boardResult = 0x9A8;
 }  // namespace app
 
 namespace widgetManager {
+constexpr size_t hasFocus = 0x9C;
 constexpr size_t mouseIn = 0x104;
 constexpr size_t lastMouseX = 0x108;
 constexpr size_t lastMouseY = 0x10C;
