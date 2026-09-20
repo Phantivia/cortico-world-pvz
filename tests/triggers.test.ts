@@ -112,12 +112,17 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
       const args = { when: { boss: { vulnerable: true, immobilized: false } },
         steps: [{ skill: 'plant', plant: 'ice_shroom', row: 2, column: 3 }], maxFirings: 4 };
       expect(await callTool(world, 'pvz_arm', args)).toContain('此刻有 3 张，这次要 4 张');
+      expect(await callTool(world, 'pvz_observe')).toContain('寒冰菇：可新排3张（已安排0张）');
       expect(await callTool(world, 'pvz_arm', { ...args, maxFirings: 2 })).toContain('剩余2/2次');
+      expect(await world.handoffSnapshot()).toContain('寒冰菇：可新排1张（已安排2张）');
+      expect((await world.photoFrame()).text).toContain('寒冰菇：可新排1张（已安排2张）');
       for (const remaining of [2, 1]) {
         transport.publish(draft => { draft.board!.boss!.immobilized = false; });
         await afterTimers(150);
         expect(transport.state.board!.cards).toHaveLength(remaining);
         expect(transport.state.board!.boss!.immobilized).toBe(true);
+        expect(await callTool(world, 'pvz_observe'))
+          .toContain(`寒冰菇：可新排1张（已安排${remaining - 1}张）`);
         transport.publish(() => {});
         await afterTimers(30);
         expect(transport.state.board!.cards).toHaveLength(remaining);
@@ -128,6 +133,11 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
       expect(await callTool(world, 'pvz_queue')).not.toContain('待触发');
       expect(host.events.filter(({ event }) => event.type === 'pvz.trigger'))
         .toHaveLength(2);
+      expect(await callTool(world, 'pvz_arm', { ...args,
+        when: { boss: { vulnerable: false } }, maxFirings: 1 })).toContain('已武装');
+      expect(await callTool(world, 'pvz_queue')).toContain('寒冰菇：可新排0张（已安排1张）');
+      await callTool(world, 'pvz_stop');
+      expect(await callTool(world, 'pvz_observe')).toContain('寒冰菇：可新排1张（已安排0张）');
     } finally { await world.stop(); }
   });
 

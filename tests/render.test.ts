@@ -92,9 +92,9 @@ it('groups interchangeable conveyor packets and lists only disclosed empty pots 
   board.cells.find(cell => cell.row === 1 && cell.column === 4)!.playable = null;
   const state = snapshot({ screen: 'board', mode: 35, board });
   for (const text of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
-    expect(text).toContain('寒冰菇×2张[可用1张]');
+    expect(text).toContain('寒冰菇×2张[就绪1张]');
     expect(text).toContain('冻结全场后减速');
-    expect(text).toContain('火爆辣椒×1张[可用1张]');
+    expect(text).toContain('火爆辣椒×1张[就绪1张]');
     expect(text).toContain('空花盆落点：第1排第1列');
     expect(text).not.toMatch(/空花盆落点：[^\n"\]]*第[234]列/);
     expect(text).toContain('头部可受伤');

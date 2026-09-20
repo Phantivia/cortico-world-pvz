@@ -440,7 +440,8 @@ export class PvzWorld implements World {
       mime: frame.mime,
       width: frame.width,
       height: frame.height,
-      text: `PvZ 窗口画面 ${frame.width}×${frame.height}；截图返回时的语义状态：\n${renderSnapshot(after, 'summary')}`,
+      text: [`PvZ 窗口画面 ${frame.width}×${frame.height}；截图返回时的语义状态：\n${renderSnapshot(after, 'summary')}`,
+        this.renderConveyorBudget(after.board)].filter(Boolean).join('\n'),
     };
   }
 
@@ -1459,13 +1460,32 @@ export class PvzWorld implements World {
   }
 
   private renderQueueStatus(): string {
-    const lines = [this.renderQueueLine()];
+    const lines = [this.renderConveyorBudget(this.latest?.board ?? null), this.renderQueueLine()].filter(Boolean);
     if (this.lastTaskReport) lines.push(`[最近回执] ${this.lastTaskReport.text}`);
     return lines.join('\n');
   }
 
   private renderQueueLine(): string {
     return `[PvZ队列] ${renderPvzQueue(this.executor.status())}${this.triggers.render()}`;
+  }
+
+  private pendingConveyorCardDemand(board: PvzBoardState): Map<string, number> {
+    return conveyorCardDemand(board, [
+      ...this.executor.pendingSteps(),
+      ...this.triggers.list().flatMap(trigger => Array.from({ length: trigger.remainingFirings }, () => trigger.steps).flat()),
+    ]);
+  }
+
+  private renderConveyorBudget(board: PvzBoardState | null): string {
+    if (!board || !isConveyorBoard(board)) return '';
+    const pending = this.pendingConveyorCardDemand(board);
+    const keys = new Set([...board.cards.map(conveyorCardKey), ...pending.keys()]);
+    if (keys.size === 0) return '';
+    return `[传送带预算] ${[...keys].map(key => {
+      const total = board.cards.filter(card => conveyorCardKey(card) === key).length;
+      const reserved = pending.get(key) ?? 0;
+      return `${conveyorCardLabel(board, key)}：可新排${Math.max(0, total - reserved)}张（已安排${reserved}张）`;
+    }).join('；')}`;
   }
 
   /**
@@ -1482,10 +1502,7 @@ export class PvzWorld implements World {
     const adding = conveyorCardDemand(board, steps);
     if (adding.size === 0) return [...steps];
     const admitted = [...steps];
-    const pending = conveyorCardDemand(board, [
-      ...this.executor.pendingSteps(),
-      ...this.triggers.list().flatMap(trigger => Array.from({ length: trigger.remainingFirings }, () => trigger.steps).flat()),
-    ]);
+    const pending = this.pendingConveyorCardDemand(board);
     for (const [key, count] of adding) {
       const inFlight = pending.get(key) ?? 0;
       const available = board.cards.filter((card) => conveyorCardKey(card) === key).length;
@@ -1804,8 +1821,9 @@ export class PvzWorld implements World {
     this.lastDeferredKey = snapshotKey(latest);
     return [
       latest.board ? renderTacticalSnapshot(latest) : renderSnapshot(latest, 'summary'),
+      this.renderConveyorBudget(latest.board),
       this.renderQueueLine(),
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   }
 
   private queueWhackTarget(host: WorldHost, trigger: 'flush' | 'piggyback' = 'flush'): void {

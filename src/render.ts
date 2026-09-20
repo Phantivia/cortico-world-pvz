@@ -515,7 +515,7 @@ function renderBoardCards(board: PvzBoardState): string[] {
     const available = cards.filter(card => card.ready && card.affordable).length;
     const facts = cardMechanicsFacts(card).filter(fact =>
       ![1, 3, 5].includes(board.background) || fact !== '白天入睡，需咖啡豆唤醒');
-    return `${seedIdentity(card.name, card.imitates)}×${cards.length}张[可用${available}张]`
+    return `${seedIdentity(card.name, card.imitates)}×${cards.length}张[就绪${available}张]`
       + (facts.length ? `（${facts.join('；')}）` : '');
   });
 }
