@@ -9,7 +9,7 @@ import { describePvzStep, parsePvzDo, parsePvzQueueMode, type PvzDoStep, type Pv
 
 /**
  * 触发器在条件成真时提交队列，默认一次。有限重复须先观察到条件为假，再次成真才提交。
- * 它不在队列里,不占卡片,不挡任何任务;打响时卡片没准备好,由那份队列自己的 `when` 处理。
+ * 普通传送带触发器预留全部剩余次数；waitForCards 等待可用余卡，打响前不预留。
  * 绑定武装时的棋盘运行:关卡结束、换棋盘或离开棋盘就撤掉,不带进下一关。
  */
 export interface PvzTrigger {
@@ -22,6 +22,7 @@ export interface PvzTrigger {
   expiresAt: number | null;
   maxFirings: number;
   remainingFirings: number;
+  waitForCards: boolean;
   conditionActive: boolean;
 }
 
@@ -37,6 +38,7 @@ export interface PvzTriggerTableOptions {
   snapshot: () => PvzSnapshot | null;
   /** 打响:把队列交给执行器,返回受理回执。 */
   fire: (trigger: PvzTrigger) => string;
+  canFire?: (trigger: PvzTrigger, snapshot: PvzSnapshot | null) => boolean;
   report: (report: PvzTriggerReport) => void;
   nextId: () => number;
   now?: () => number;
@@ -45,9 +47,9 @@ export interface PvzTriggerTableOptions {
 const TERMINAL_SCREENS = new Set(['award', 'defeat', 'main_menu', 'mode_selector', 'seed_picker', 'credits']);
 
 export function parsePvzArm(args: Record<string, unknown>): {
-  condition: PvzCondition; steps: PvzDoStep[]; queue: PvzQueueMode; expiresInMs: number | null; maxFirings: number;
+  condition: PvzCondition; steps: PvzDoStep[]; queue: PvzQueueMode; expiresInMs: number | null; maxFirings: number; waitForCards: boolean;
 } {
-  const extra = Object.keys(args).filter((key) => !['when', 'steps', 'queue', 'expiresInMs', 'maxFirings'].includes(key));
+  const extra = Object.keys(args).filter((key) => !['when', 'steps', 'queue', 'expiresInMs', 'maxFirings', 'waitForCards'].includes(key));
   if (extra.length) throw new Error(`pvz_arm 不认识字段:${extra.join('、')}`);
   const condition = parsePvzCondition(args.when);
   if ('error' in condition) throw new Error(`when: ${condition.error}`);
@@ -63,12 +65,18 @@ export function parsePvzArm(args: Record<string, unknown>): {
   if (typeof maxFirings !== 'number' || !Number.isInteger(maxFirings) || maxFirings < 1 || maxFirings > 16) {
     throw new Error('maxFirings 必须是 1–16 的整数');
   }
+  const waitForCards = args.waitForCards ?? false;
+  if (typeof waitForCards !== 'boolean' || args.waitForCards === null) throw new Error('waitForCards 必须是布尔值');
+  if (waitForCards && steps.steps.some(step => step.skill !== 'plant' || step.when !== 'now')) {
+    throw new Error('waitForCards 只接受 when:now 的种植步骤');
+  }
   return { condition: condition.condition, steps: steps.steps, queue: queue.mode,
-    expiresInMs: (ttl as number | undefined) ?? null, maxFirings };
+    expiresInMs: (ttl as number | undefined) ?? null, maxFirings, waitForCards };
 }
 
 export function describePvzTrigger(trigger: PvzTrigger): string {
   return `${describePvzCondition(trigger.condition)} → ${trigger.steps.map(describePvzStep).join('；')}`
+    + (trigger.waitForCards ? '；缺卡等待，不提前占卡' : '')
     + (trigger.maxFirings > 1 ? `；剩余${trigger.remainingFirings}/${trigger.maxFirings}次，每次须条件重新成真` : '');
 }
 
@@ -85,6 +93,7 @@ export class PvzTriggerTable {
     queue: PvzQueueMode,
     expiresInMs: number | null,
     maxFirings = 1,
+    waitForCards = false,
   ): PvzTrigger {
     const snapshot = this.opts.snapshot();
     if (snapshot?.screen !== 'board' || !snapshot.board) {
@@ -101,6 +110,7 @@ export class PvzTriggerTable {
       expiresAt: expiresInMs === null ? null : now + expiresInMs,
       maxFirings,
       remainingFirings: maxFirings,
+      waitForCards,
       conditionActive: false,
     };
     this.triggers.push(trigger);
@@ -154,6 +164,7 @@ export class PvzTriggerTable {
       const matched = evaluatePvzCondition(trigger.condition, snapshot);
       if (matched === false) trigger.conditionActive = false;
       if (matched !== true || trigger.conditionActive) continue;
+      if (this.opts.canFire && !this.opts.canFire(trigger, snapshot)) continue;
       trigger.conditionActive = true;
       trigger.remainingFirings -= 1;
       if (trigger.remainingFirings === 0) this.remove(trigger);

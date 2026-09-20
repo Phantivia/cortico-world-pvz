@@ -274,7 +274,7 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
     name: 'pvz_arm',
     tags: ['act'],
     description: '武装一个触发器：条件成立那一刻把 steps 当一份队列提交。默认一次；maxFirings 指定有限重复次数，每次须先观察到条件为假，再次成真才打响。触发器独立于队列，'
-      + '不占卡片、不挡后面的任务；打响时卡片没准备好，按那份队列自己的 when 处理。'
+      + '不挡后面的任务。传送带默认预留全部次数的当前卡数；waitForCards:true 改为等可用余卡到达再打响，不提前占卡。'
       + '关卡结束或换棋盘时自动撤掉。撤销用 pvz_stop({triggerId})。',
     parameters: {
       type: 'object',
@@ -295,7 +295,11 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
         },
         maxFirings: {
           type: 'integer', minimum: 1, maximum: 16,
-          description: '最多触发次数，缺省1。连续为真只触发一次；后续须条件先为假再为真。传送带按全部剩余次数核算卡数。动作失败也用掉本次次数。',
+          description: '最多触发次数，缺省1。连续为真只触发一次；后续须条件先为假再为真。动作失败也用掉本次次数。',
+        },
+        waitForCards: {
+          type: 'boolean',
+          description: '缺省false：传送带在武装时预留全部次数的当前卡。true仅用于传送带、只收when:now的种植步骤：条件为真且这一份步骤的卡已就绪、未被其他任务占用时才提交；缺卡继续等，不消耗次数，也不阻塞队列。可等待未来到达的卡，次数与当前张数无关。落点仍在执行时检查。',
         },
       },
       required: ['when', 'steps'],

@@ -74,7 +74,7 @@ import {
   type PvzDoStep,
 } from './skills.ts';
 import { pvzCollectExecutionBudgetMs, pvzWhackExecutionBudgetMs } from './timing.ts';
-import { describePvzTrigger, parsePvzArm, PvzTriggerTable, type PvzTriggerReport } from './triggers.ts';
+import { describePvzTrigger, parsePvzArm, PvzTriggerTable, type PvzTrigger, type PvzTriggerReport } from './triggers.ts';
 import {
   PVZ_TOOL_DECLS,
   WHACK_SKILL_QUEUE_LENGTH,
@@ -253,6 +253,7 @@ export class PvzWorld implements World {
     this.triggers = new PvzTriggerTable({
       snapshot: () => this.latest,
       fire: (trigger) => this.executor.submit(trigger.steps, trigger.queue, []),
+      canFire: (trigger, snapshot) => this.triggerCardsReady(trigger, snapshot),
       report: (report) => this.onTriggerReport(report),
       nextId: () => ++this.nextTaskId,
     });
@@ -617,12 +618,14 @@ export class PvzWorld implements World {
     if (name === 'pvz_arm') {
       await this.requireRuntime().readFreshSnapshot();
       const request = parsePvzArm(args);
-      // 触发器打响时直接进执行器,绕过 pvz_do 的受理;传送带的那一张卡在这里就要算上。
-      this.requireConveyorCardBudget(
-        this.latest?.screen === 'board' ? this.latest.board : null,
-        Array.from({ length: request.maxFirings }, () => request.steps).flat(),
-      );
-      const trigger = this.triggers.arm(request.condition, request.steps, request.queue, request.expiresInMs, request.maxFirings);
+      const board = this.latest?.screen === 'board' ? this.latest.board : null;
+      if (request.waitForCards) {
+        if (board?.cards.some(card => card.cost !== null)) throw new Error('waitForCards 只用于传送带种植');
+      } else {
+        this.requireConveyorCardBudget(board, Array.from({ length: request.maxFirings }, () => request.steps).flat());
+      }
+      const trigger = this.triggers.arm(request.condition, request.steps, request.queue,
+        request.expiresInMs, request.maxFirings, request.waitForCards);
       const armed = this.triggers.list().some((item) => item.id === trigger.id);
       return `${armed
         ? `触发器#${trigger.id} 已武装:${describePvzTrigger(trigger)}`
@@ -1478,8 +1481,19 @@ export class PvzWorld implements World {
   private pendingConveyorCardDemand(board: PvzBoardState): Map<string, number> {
     return conveyorCardDemand(board, [
       ...this.executor.pendingSteps(),
-      ...this.triggers.list().flatMap(trigger => Array.from({ length: trigger.remainingFirings }, () => trigger.steps).flat()),
+      ...this.triggers.list().filter(trigger => !trigger.waitForCards)
+        .flatMap(trigger => Array.from({ length: trigger.remainingFirings }, () => trigger.steps).flat()),
     ]);
+  }
+
+  private triggerCardsReady(trigger: PvzTrigger, snapshot: PvzSnapshot | null): boolean {
+    if (!trigger.waitForCards) return true;
+    const board = snapshot?.screen === 'board' ? snapshot.board : null;
+    if (!board || !isConveyorBoard(board)) return false;
+    const pending = this.pendingConveyorCardDemand(board);
+    return [...conveyorCardDemand(board, trigger.steps)].every(([key, count]) =>
+      board.cards.filter(card => card.ready && conveyorCardKey(card) === key).length
+        >= count + (pending.get(key) ?? 0));
   }
 
   private renderConveyorBudget(board: PvzBoardState | null): string {

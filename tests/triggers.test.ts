@@ -41,6 +41,122 @@ async function settle() {
 }
 
 describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出去', () => {
+  it('waits for later packets without spending firings or consuming another trigger reservation', async () => {
+    const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
+      affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+      x: 150, y: 40 };
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
+      board: boardState({ background: 5, cards: [],
+        boss: { phase: 'boss_aiming', immobilized: false, projectile: null },
+      }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => {
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+        draft.board!.boss!.immobilized = true;
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    const steps = [{ skill: 'plant', plant: 'ice_shroom', row: 2, column: 3 }];
+    try {
+      const response = await callTool(world, 'pvz_arm', {
+        when: { boss: { vulnerable: true, immobilized: false } },
+        steps, maxFirings: 2, waitForCards: true,
+      });
+      expect(response).toContain('缺卡等待');
+      await afterTimers(30);
+      expect(await callTool(world, 'pvz_queue')).toContain('剩余2/2次');
+      expect(host.events.some(({ event }) => event.type === 'pvz.trigger')).toBe(false);
+
+      transport.publish(draft => { draft.board!.cards = [{ ...card, ready: false }]; });
+      await afterTimers(30);
+      expect(transport.state.board!.boss!.immobilized).toBe(false);
+      expect(await callTool(world, 'pvz_arm', { when: { sun: { min: 9000 } }, steps }))
+        .toContain('已武装');
+      transport.publish(draft => { draft.board!.cards[0]!.ready = true; });
+      await afterTimers(30);
+      expect(transport.state.board!.boss!.immobilized).toBe(false);
+      expect(await callTool(world, 'pvz_queue')).toContain('剩余2/2次');
+      expect(await callTool(world, 'pvz_observe')).toContain('寒冰菇：可新排0张（已安排1张）');
+
+      for (const remaining of [1, 0]) {
+        transport.publish(draft => { draft.board!.boss!.immobilized = false; });
+        await afterTimers(30);
+        expect(transport.state.board!.cards).toHaveLength(1);
+        transport.publish(draft => { draft.board!.cards.push({ ...card, slot: 1 }); });
+        await afterTimers(150);
+        expect(transport.state.board!.boss!.immobilized).toBe(true);
+        expect(transport.state.board!.cards).toHaveLength(1);
+        expect(await callTool(world, 'pvz_queue')).toContain('寒冰菇：可新排0张（已安排1张）');
+        if (remaining) expect(await callTool(world, 'pvz_queue')).toContain('剩余1/2次');
+      }
+      expect(host.events.filter(({ event }) => event.type === 'pvz.trigger' && event.text.includes('打响')))
+        .toHaveLength(2);
+      expect(await callTool(world, 'pvz_queue')).not.toContain('缺卡等待');
+      transport.publish(draft => {
+        draft.board!.boss!.immobilized = false;
+        draft.board!.cards.push({ ...card, slot: 1 });
+      });
+      await afterTimers(30);
+      expect(transport.state.board!.cards).toHaveLength(2);
+    } finally { await world.stop(); }
+  });
+
+  it('does not spend a scarce packet twice when waiting triggers become eligible together', async () => {
+    const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
+      affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+      x: 150, y: 40 };
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
+      board: boardState({ cards: [] }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant') return;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => { draft.board!.cards = []; });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      for (const row of [2, 3]) await callTool(world, 'pvz_arm', {
+        when: { sun: { min: 0 } }, waitForCards: true,
+        steps: [{ skill: 'plant', plant: 'ice_shroom', row, column: 2 }],
+      });
+      transport.publish(draft => { draft.board!.cards = [card]; });
+      await afterTimers(150);
+      expect(host.events.filter(({ event }) => event.type === 'pvz.trigger' && event.text.includes('打响')))
+        .toHaveLength(1);
+      expect(await callTool(world, 'pvz_queue')).toContain('缺卡等待');
+      transport.publish(draft => { draft.screen = 'defeat'; draft.board = null; });
+      await afterTimers(30);
+      expect(await callTool(world, 'pvz_queue')).not.toContain('待触发');
+      expect(host.events.some(({ event }) => event.type === 'pvz.trigger' && event.text.includes('随关卡结束撤掉')))
+        .toBe(true);
+    } finally { await world.stop(); }
+  });
+
+  it('accepts only explicit boolean card waiting and immediate planting steps', async () => {
+    const args = { when: { sun: { min: 0 } }, steps: [{ ...plant, when: 'now' }] };
+    expect(parsePvzArm(args).waitForCards).toBe(false);
+    expect(parsePvzArm({ ...args, waitForCards: true }).waitForCards).toBe(true);
+    for (const waitForCards of [null, 1, 'true']) {
+      expect(() => parsePvzArm({ ...args, waitForCards })).toThrow('waitForCards');
+    }
+    for (const steps of [[plant], [collect], [{ skill: 'shovel', row: 2, column: 3 }]]) {
+      expect(() => parsePvzArm({ ...args, steps, waitForCards: true })).toThrow('when:now');
+    }
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', board: boardState({
+      cards: [{ slot: 0, type: 0, name: 'peashooter', imitates: null, cost: 100, ready: true,
+        affordable: true, cooldown: 'ready', cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
+        x: 150, y: 40 }],
+    }) }));
+    const { world } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_arm', { ...args, waitForCards: true })).toContain('只用于传送带');
+    } finally { await world.stop(); }
+  });
+
   it('counters two later iceballs in their observed rows and skips a vanished or different projectile', async () => {
     const card = { slot: 0, type: 20, name: 'jalapeno', imitates: null, cost: null, ready: true,
       affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
