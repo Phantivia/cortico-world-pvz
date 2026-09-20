@@ -8,6 +8,10 @@
     "type": "git",
     "url": "https://github.com/Phantivia/cortico-world-pvz.git"
   },
+  "homepage": "https://github.com/Phantivia/cortico-world-pvz#readme",
+  "bugs": {
+    "url": "https://github.com/Phantivia/cortico-world-pvz/issues"
+  },
   "keywords": [
     "cortico-world",
     "cortico",
