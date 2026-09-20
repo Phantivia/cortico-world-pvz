@@ -54,6 +54,23 @@ function evaluate(condition: PvzCondition, board = boardState()): boolean | null
 }
 
 describe('PvZ condition parsing', () => {
+  it('counts only the requested visible immobilization state and retains obscured uncertainty', () => {
+    const condition = parse({ zombie: { row: [2, 3], maxColumn: 4, immobilized: false } });
+    const board = boardState({ zombies: [zombie({ row: 3, columnPosition: 3.5, immobilized: true })] });
+    expect(evaluate(condition, board)).toBe(false);
+    board.zombies[0]!.immobilized = false;
+    expect(evaluate(condition, board)).toBe(true);
+    expect(evaluate(parse({ zombie: { row: 3, immobilized: true } }), board)).toBe(false);
+    expect(describePvzCondition(condition)).toContain('未定身');
+    board.zombies[0]!.columnPosition = 5;
+    expect(evaluate(condition, board)).toBe(false);
+    board.cells.find(cell => cell.row === 3 && cell.column === 2)!.playable = null;
+    expect(evaluate(condition, board)).toBeNull();
+    for (const immobilized of [null, 0, 'false']) {
+      expect(parsePvzCondition({ zombie: { row: 3, immobilized } })).toHaveProperty('error');
+    }
+  });
+
   it('matches exposed boss windows and thaw without treating missing observations as false', () => {
     const condition = parse({ boss: { vulnerable: true, immobilized: false } });
     const board = boardState({ boss: { phase: 'boss_idle', immobilized: false, projectile: null } });

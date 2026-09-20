@@ -18,6 +18,7 @@ export type PvzCondition =
         maxColumn?: number;
         /** Matches needed across every listed row; omitted means one. */
         minCount?: number;
+        immobilized?: boolean;
       };
     }
   | { all: PvzCondition[] }
@@ -141,20 +142,22 @@ export function parsePvzCondition(raw: unknown): ParseResult {
     }
     if (key === 'zombie') {
       const rows = parseRows(fields.row);
-      if (!onlyKeys(fields, ['row', 'minColumn', 'maxColumn', 'minCount'])
+      if (!onlyKeys(fields, ['row', 'minColumn', 'maxColumn', 'minCount', 'immobilized'])
         || rows === null
         || !optionalNumber(fields, 'minColumn', MIN_POSITION, MAX_POSITION)
         || !optionalNumber(fields, 'maxColumn', MIN_POSITION, MAX_POSITION)
         || (typeof fields.minColumn === 'number' && typeof fields.maxColumn === 'number'
           && fields.minColumn > fields.maxColumn)
-        || ('minCount' in fields && !integer(fields.minCount, 1, MAX_ZOMBIE_COUNT))) {
-        return { error: `${at}: 需要 row=1–6 或不重复的 1–6 排数组，有限列位置 ${MIN_POSITION}–${MAX_POSITION} 且 minColumn ≤ maxColumn，minCount=1–${MAX_ZOMBIE_COUNT}` };
+        || ('minCount' in fields && !integer(fields.minCount, 1, MAX_ZOMBIE_COUNT))
+        || ('immobilized' in fields && typeof fields.immobilized !== 'boolean')) {
+        return { error: `${at}: 需要 row=1–6 或不重复的 1–6 排数组，有限列位置 ${MIN_POSITION}–${MAX_POSITION} 且 minColumn ≤ maxColumn，minCount=1–${MAX_ZOMBIE_COUNT}，immobilized 为布尔值` };
       }
       return { condition: { zombie: {
         row: rows,
         ...(fields.minColumn === undefined ? {} : { minColumn: fields.minColumn as number }),
         ...(fields.maxColumn === undefined ? {} : { maxColumn: fields.maxColumn as number }),
         ...(fields.minCount === undefined ? {} : { minCount: fields.minCount as number }),
+        ...(fields.immobilized === undefined ? {} : { immobilized: fields.immobilized as boolean }),
       } } };
     }
     return { error: `${at}: 未知条件字段` };
@@ -296,6 +299,7 @@ function evaluateZombie(
   if (board.fog.visibilityRule === 'invisighoul') return null;
   // These death animations can be disclosed before the implant filters the dead object.
   const count = board.zombies.filter((zombie) => rows.includes(zombie.row) && !zombie.hypnotized
+    && (condition.immobilized === undefined || zombie.immobilized === condition.immobilized)
     && zombie.phase !== 'dying'
     && zombie.phase !== 'burned' && zombie.phase !== 'mowed'
     && zombie.columnPosition >= min && zombie.columnPosition <= max).length;
@@ -355,11 +359,12 @@ export function describePvzCondition(condition: PvzCondition): string {
     const layerName = { main: '主层', base: '底座层', pumpkin: '南瓜层' }[layer];
     return `${cellText(row, column)}${layerName}${empty ? '为空' : '有植物'}`;
   }
-  const { minColumn, maxColumn, minCount } = condition.zombie;
+  const { minColumn, maxColumn, minCount, immobilized } = condition.zombie;
   const rows = rowsOf(condition.zombie);
   const where = rows.length === 1 ? rowText(rows[0]!) : `${rows.map(rowText).join('、')}合计`;
   const interval = `${minColumn === undefined ? '' : `，列位置 ≥ ${minColumn}`}${maxColumn === undefined ? '' : `，列位置 ≤ ${maxColumn}`}`;
-  return `${where}${minCount === undefined ? '存在' : `至少 ${minCount} 只`}可见存活敌方僵尸${interval}`;
+  const status = immobilized === undefined ? '' : immobilized ? '且已定身' : '且未定身';
+  return `${where}${minCount === undefined ? '存在' : `至少 ${minCount} 只`}可见存活敌方僵尸${status}${interval}`;
 }
 
 /** Place PVZ_CONDITION_DEFS at the pvz_do parameters root alongside properties. */
@@ -443,6 +448,7 @@ export const PVZ_CONDITION_DEFS = {
           type: 'object', additionalProperties: false, required: ['row'],
           description: '闭区间内可见存活且未被魅惑的僵尸数量达到 minCount(默认 1)。'
             + 'row 写多排时按这几排合计计数，够樱桃炸弹的 3×3 或整片一次性植物用。'
+            + 'immobilized 可筛选已定身或未定身的目标。'
             + '列边界比的是 columnPosition，省略则覆盖整行；数量不足且区间内有隐藏格时为未知。',
           properties: {
             row: { oneOf: [ROW_SCHEMA, {
@@ -451,6 +457,7 @@ export const PVZ_CONDITION_DEFS = {
             minColumn: POSITION_SCHEMA,
             maxColumn: POSITION_SCHEMA,
             minCount: { type: 'integer', minimum: 1, maximum: MAX_ZOMBIE_COUNT },
+            immobilized: { type: 'boolean' },
           },
         } },
       },

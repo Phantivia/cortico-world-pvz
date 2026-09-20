@@ -89,12 +89,16 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
     } finally { await world.stop(); }
   });
 
-  it('uses exactly two conveyor packets across two thaws and leaves the third packet unused', async () => {
+  it.each(['boss', 'nearby zombie'])('uses two packets across two %s thaws and leaves the third unused', async source => {
     const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
       affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
       x: 150, y: 40 };
     const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 35, menu: [],
-      board: boardState({ background: 5, boss: { phase: 'boss_aiming', immobilized: true, projectile: null },
+      board: boardState({ background: 5,
+        boss: { phase: source === 'boss' ? 'boss_aiming' : 'boss_idle', immobilized: true, projectile: null },
+        zombies: [{ id: 7, type: 0, name: 'zombie', row: 3, column: 4, columnPosition: 3.8,
+          xBand: 'near', speedCellsPerSecond: 0, phase: 'walking', condition: 'intact',
+          armor: 'none', shield: 'none', hypnotized: false, slowed: true, immobilized: true }],
         cards: [card, { ...card, slot: 1 }, { ...card, slot: 2 }],
       }),
     }));
@@ -105,11 +109,18 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
         draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
           .map((item, slot) => ({ ...item, slot }));
         draft.board!.boss!.immobilized = true;
+        draft.board!.zombies[0]!.immobilized = true;
       });
     };
     const { world, host } = await startWorld(transport);
     try {
-      const args = { when: { boss: { vulnerable: true, immobilized: false } },
+      const when = source === 'boss' ? { boss: { vulnerable: true, immobilized: false } }
+        : { zombie: { row: [2, 3], maxColumn: 4, immobilized: false } };
+      const thaw = () => transport.publish(draft => {
+        if (source === 'boss') draft.board!.boss!.immobilized = false;
+        else draft.board!.zombies[0]!.immobilized = false;
+      });
+      const args = { when,
         steps: [{ skill: 'plant', plant: 'ice_shroom', row: 2, column: 3 }], maxFirings: 4 };
       expect(await callTool(world, 'pvz_arm', args)).toContain('此刻有 3 张，这次要 4 张');
       expect(await callTool(world, 'pvz_observe')).toContain('寒冰菇：可新排3张（已安排0张）');
@@ -117,7 +128,7 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
       expect(await world.handoffSnapshot()).toContain('寒冰菇：可新排1张（已安排2张）');
       expect((await world.photoFrame()).text).toContain('寒冰菇：可新排1张（已安排2张）');
       for (const remaining of [2, 1]) {
-        transport.publish(draft => { draft.board!.boss!.immobilized = false; });
+        thaw();
         await afterTimers(150);
         expect(transport.state.board!.cards).toHaveLength(remaining);
         expect(transport.state.board!.boss!.immobilized).toBe(true);
@@ -127,14 +138,14 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
         await afterTimers(30);
         expect(transport.state.board!.cards).toHaveLength(remaining);
       }
-      transport.publish(draft => { draft.board!.boss!.immobilized = false; });
+      thaw();
       await afterTimers(30);
       expect(transport.state.board!.cards).toHaveLength(1);
       expect(await callTool(world, 'pvz_queue')).not.toContain('待触发');
       expect(host.events.filter(({ event }) => event.type === 'pvz.trigger'))
         .toHaveLength(2);
       expect(await callTool(world, 'pvz_arm', { ...args,
-        when: { boss: { vulnerable: false } }, maxFirings: 1 })).toContain('已武装');
+        when: { sun: { min: 9000 } }, maxFirings: 1 })).toContain('已武装');
       expect(await callTool(world, 'pvz_queue')).toContain('寒冰菇：可新排0张（已安排1张）');
       await callTool(world, 'pvz_stop');
       expect(await callTool(world, 'pvz_observe')).toContain('寒冰菇：可新排1张（已安排0张）');
