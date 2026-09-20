@@ -713,12 +713,16 @@ export class PvzWorld implements World {
       const board = this.requireBoard(true);
       let row: number;
       if (typeof step.row === 'number') row = integerArg(step.row, 'row', 1, board.rows);
-      else {
+      else if ('bossProjectile' in step.row) {
         const projectile = board.disclosure.entitiesVisible ? board.boss?.projectile : null;
         if (!projectile || projectile.kind !== step.row.bossProjectile) {
           return { outcome: 'yield', text: `当前没有可见${step.row.bossProjectile === 'iceball' ? '冰球' : '火球'}，已跳过 ${plantLabel}` };
         }
         row = projectile.row;
+      } else {
+        const pot = emptyFlowerPotCells(board).sort((a, b) => a.column - b.column || a.row - b.row)[0];
+        if (!pot) return { outcome: 'yield', text: `全棋盘当前没有可见空花盆，已跳过 ${plantLabel}` };
+        row = pot.row;
       }
       let column = step.column;
       if (typeof column === 'number') column = integerArg(column, 'column', 1, board.columns);

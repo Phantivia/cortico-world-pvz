@@ -3322,6 +3322,46 @@ describe('PvzWorld 特殊关卡', () => {
 });
 
 describe('PvzWorld 伪阻塞', () => {
+  it('selects global empty pots by column then row and preserves cards when none remain', async () => {
+    const card = { type: 14, name: 'ice_shroom', imitates: null, cost: null,
+      ready: true, affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0,
+      cooldownRemainingSeconds: 0, x: 80, y: 40 };
+    const pot = (row: number, column: number) => ({ id: row * 10 + column,
+      type: 33, name: 'flower_pot', row, column,
+      condition: 'intact' as const, sleeping: false, squished: false, layers: [] });
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState({
+      background: 5, cards: Array.from({ length: 4 }, (_, slot) => ({ ...card, slot })),
+      plants: [pot(1, 1), { ...pot(1, 1), id: 100, type: 34, name: 'kernel_pult' },
+        { ...pot(3, 1), squished: true }, pot(2, 2), pot(5, 1), pot(4, 1)],
+    }) }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'plant' || !('column' in action)) return;
+      fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+      fake.publish(draft => {
+        draft.board!.plants.push({ ...pot(action.row, action.column), id: 1000 + action.row,
+          type: 14, name: 'ice_shroom' });
+        draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+          .map((item, slot) => ({ ...item, slot }));
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', { steps: Array.from({ length: 4 }, () => ({
+        skill: 'plant', plant: 'ice_shroom', row: { emptyPot: 'nearest_house' },
+        column: { emptyPot: 'nearest_house' },
+      })) });
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'));
+      expect(transport.state.board!.plants.filter(plant => plant.type === 14)
+        .map(plant => [plant.row, plant.column])).toEqual([[4, 1], [5, 1], [2, 2]]);
+      expect(transport.state.board!.cards).toHaveLength(1);
+      const report = host.events.find(({ event }) => event.type === 'pvz.task')!.event.text;
+      expect(report).toContain('全棋盘当前没有可见空花盆');
+      expect(report).toContain('寒冰菇 已种在第4排第1列');
+      expect(report).toContain('寒冰菇 已种在第5排第1列');
+      expect(report).toContain('寒冰菇 已种在第2排第2列');
+    } finally { await world.stop(); }
+  });
+
   it('continues rebuilding after a shovel target disappears before native input', async () => {
     const card = { slot: 0, type: 33, name: 'flower_pot', imitates: null, cost: null,
       ready: true, affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0,

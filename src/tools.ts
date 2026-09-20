@@ -118,8 +118,12 @@ const PVZ_STEP_SCHEMA = {
             type: 'object',
             properties: { bossProjectile: { type: 'string', enum: ['iceball', 'fireball'] } },
             required: ['bossProjectile'], additionalProperties: false,
+          }, {
+            type: 'object',
+            properties: { emptyPot: { type: 'string', enum: ['nearest_house'] } },
+            required: ['emptyPot'], additionalProperties: false,
           }],
-          description: '排号，或执行时当前可见的指定冰火球所在排。球消失或类型不同则跳过本步。反制冰球可与 column:{emptyPot:"nearest_house"} 合用。',
+          description: '排号，或执行时当前可见的指定冰火球所在排。球消失或类型不同则跳过本步。row 与 column 都写 {emptyPot:"nearest_house"} 可跨排选全棋盘最靠房子的可见空盆，同列取排号较小者；适用于寒冰菇等全场效果。没有空盆则跳过。',
         },
         column: {
           oneOf: [CELL_PROPERTIES.column, {
@@ -134,7 +138,7 @@ const PVZ_STEP_SCHEMA = {
             properties: { emptyPot: { type: 'string', enum: ['nearest_house'] } },
             required: ['emptyPot'], additionalProperties: false,
           }],
-          description: '{emptyPot:"nearest_house"} 在本步执行前选该排最靠房子的可见空花盆；没有就跳过，不补盆、不换排，回执给出实际落点。屋顶投手、冰菇与辣椒可用此选择器。'
+          description: '{emptyPot:"nearest_house"} 在本步执行前选 row 范围内最靠房子的可见空花盆；没有就跳过，不补盆，回执给出实际落点。row 是排号时只选该排；row 同样是空盆选择器时跨排选择。'
             + '相对列在真正输入时才锁目标、落子前再重算：minGap 是下限，从该排最近敌对僵尸脚下那格往屋方向数 minGap 格起，取第一个能下这株植物的格，0 即从它脚下那格起（它正在啃的那株所在格不能下，就落到前一格）。'
             + '数到棋盘外夹在第 1 列；目标消失、这排没有能下的格或卡片没准备好时这一步跳过并返回原因，后面的步骤照做；不自动换目标或换排。',
         },

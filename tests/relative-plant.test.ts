@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseNativeMessage } from '../src/protocol.ts';
 import { PvzRuntime, verifyAction } from '../src/runtime.ts';
-import { parsePvzDo } from '../src/skills.ts';
+import { describePvzStep, parsePvzDo } from '../src/skills.ts';
 import { boardState, callTool, FakePvzTransport, snapshot, startWorld } from './helpers.ts';
 
 function initial() {
@@ -15,6 +15,20 @@ const action = { kind: 'plant' as const, slot: 0, row: 2, aheadOf: { minGap: 2 }
 const placement = { row: 2, column: 4, targetId: 8, runId: 1 };
 
 describe('relative plant admission and actual-cell verification', () => {
+  it('requires both coordinates to select an empty pot across the board', () => {
+    const step = { skill: 'plant', plant: 'ice_shroom',
+      row: { emptyPot: 'nearest_house' }, column: { emptyPot: 'nearest_house' } };
+    const parsed = parsePvzDo([step]);
+    expect(parsed).toMatchObject({ steps: [{ ...step, when: 'now' }] });
+    if ('steps' in parsed) expect(describePvzStep(parsed.steps[0]!)).toContain('全棋盘最靠近房子的可见空花盆');
+    for (const column of [1, { aheadOf: 'nearest_hostile', minGap: 0 }]) {
+      expect(parsePvzDo([{ ...step, column }])).toHaveProperty('error');
+    }
+    for (const row of [{ emptyPot: 'any' }, { ...step.row, bossProjectile: 'iceball' }]) {
+      expect(parsePvzDo([{ ...step, row }])).toHaveProperty('error');
+    }
+  });
+
   it('validates relative locations and refuses per-step conditions, which belong to pvz_arm', () => {
     const base = { skill: 'plant', plant: 'wall_nut', row: 3,
       column: { aheadOf: 'nearest_hostile', minGap: 0 } };

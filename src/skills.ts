@@ -24,7 +24,8 @@ export type PvzSeedSelector = PvzPlantName | { plant: 'imitater'; imitates: PvzP
 
 export type PvzPlantColumn = number | { aheadOf: 'nearest_hostile'; minGap: number }
   | { emptyPot: 'nearest_house' };
-export type PvzPlantRow = number | { bossProjectile: 'iceball' | 'fireball' };
+export type PvzPlantRow = number | { bossProjectile: 'iceball' | 'fireball' }
+  | { emptyPot: 'nearest_house' };
 
 export interface PvzSpecialEntityTargetSelector {
   kind: 'plant' | 'zombie' | 'grid_item' | 'collectible';
@@ -104,6 +105,7 @@ export function describePvzStep(step: PvzDoStep): string {
 }
 
 export function describePvzPlantPosition(row: PvzPlantRow, column: PvzPlantColumn): string {
+  if (typeof row !== 'number' && 'emptyPot' in row) return '全棋盘最靠近房子的可见空花盆';
   const lane = typeof row === 'number' ? rowText(row) : `当前可见${row.bossProjectile === 'iceball' ? '冰球' : '火球'}所在排`;
   if (typeof column === 'number') return `${lane}第${column}列`;
   if ('emptyPot' in column) return `${lane}最靠近房子的可见空花盆`;
@@ -274,7 +276,9 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
   else if (rowSelector && !keys(rowSelector, ['bossProjectile'])
     && (rowSelector.bossProjectile === 'iceball' || rowSelector.bossProjectile === 'fireball')) {
     row = { bossProjectile: rowSelector.bossProjectile };
-  } else return { error: `第 ${index} 步 row 必须是 1–6 或 {bossProjectile:"iceball"/"fireball"}` };
+  } else if (rowSelector && !keys(rowSelector, ['emptyPot']) && rowSelector.emptyPot === 'nearest_house') {
+    row = { emptyPot: 'nearest_house' };
+  } else return { error: `第 ${index} 步 row 必须是 1–6、{bossProjectile:"iceball"/"fireball"} 或 {emptyPot:"nearest_house"}` };
   let column: PvzPlantColumn;
   if (integer(value.column, 1, 9)) column = value.column;
   else {
@@ -287,6 +291,10 @@ function parsePlant(value: Record<string, unknown>, index: number): { step: PvzD
     } else {
       return { error: `第 ${index} 步 column 必须是 1–9、{aheadOf:"nearest_hostile",minGap:0–8} 或 {emptyPot:"nearest_house"}` };
     }
+  }
+  if (typeof row !== 'number' && 'emptyPot' in row
+    && (typeof column === 'number' || !('emptyPot' in column))) {
+    return { error: `第 ${index} 步 row:{emptyPot:"nearest_house"} 必须搭配 column:{emptyPot:"nearest_house"}` };
   }
   const when = value.when ?? 'now';
   if (!['now', 'ready', 'ready_and_affordable'].includes(String(when))) {

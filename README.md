@@ -161,7 +161,7 @@ On a conveyor board the seed bank refills from the belt: consuming one packet sh
 
 Conveyor observations, screenshots, handoffs and queue status report the remaining budget per plant identity. The available count subtracts pending steps and every remaining trigger firing from the current inventory. Card readiness is shown separately; it does not release an existing reservation.
 
-`column:{emptyPot:"nearest_house"}` chooses the lowest-column visible empty flower pot in the model's selected row from the fresh snapshot before each step. It skips destroyed, occupied, hidden and unusable pots; if none remain, only that step is skipped. It never adds a pot or changes rows. Native input verifies the selected cell, and the receipt names the committed destination. The boss empty-pot list uses the same selection facts.
+`column:{emptyPot:"nearest_house"}` chooses the lowest-column visible empty flower pot in the model's selected row from the fresh snapshot before each step. Setting `row:{emptyPot:"nearest_house"}` as well extends the scope to every row, choosing the lowest column and then the lowest row. It skips destroyed, occupied, hidden and unusable pots; if none remain, only that step is skipped. It never adds a pot or leaves the selected scope. Native input verifies the selected cell, and the receipt names the committed destination. The boss empty-pot list uses the same selection facts.
 
 `row:{bossProjectile:"iceball"}` or `row:{bossProjectile:"fireball"}` resolves the selected visible projectile's current row before the step. A missing, hidden or differently typed projectile skips the step. Combined with the empty-pot column selector, this lets a model arm same-row planting before the boss reveals a projectile's destination.
 
