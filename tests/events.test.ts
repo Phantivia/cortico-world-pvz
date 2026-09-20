@@ -493,6 +493,20 @@ describe('PvZ 事件驱动唤醒', () => {
       .not.toContain('pvz.plant.lost');
   });
 
+  it('vase planning guidance follows starts and restarts without repeating on ordinary snapshots', () => {
+    const menu = snapshot();
+    const board = snapshot({ screen: 'board', mode: 57, modeKind: 'vasebreaker', board: boardState() });
+    const started = trackSnapshot(board, menu);
+    expect(started.find(event => event.type === 'pvz.level.started')?.text).toContain('[PvZ·砸罐开局]');
+    const restarted = structuredClone(board);
+    restarted.board!.runId += 1;
+    expect(trackSnapshot(restarted, board).find(event => event.type === 'pvz.level.restarted')?.text)
+      .toContain('[PvZ·砸罐开局]');
+    expect(trackSnapshot(restarted, restarted).some(event => event.text.includes('[PvZ·砸罐开局]'))).toBe(false);
+    const adventure = snapshot({ screen: 'board', board: boardState() });
+    expect(trackSnapshot(adventure, menu).some(event => event.text.includes('[PvZ·砸罐开局]'))).toBe(false);
+  });
+
   it('跨关卡边界不会把整张新棋盘误报为逐实体变化', () => {
     const menu = snapshot();
     const board = snapshot({

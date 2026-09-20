@@ -71,6 +71,9 @@ function withTerminalLivestreamCue(text: string): string {
 }
 
 function withLevelStartLivestreamCue(text: string, snapshot: PvzSnapshot): string {
+  if (snapshot.modeKind === 'vasebreaker') {
+    return `${text}\n[PvZ·砸罐开局] 未开罐时没有新增敌人的压力。先规划本局的开罐顺序与植物分配：绿色罐给出植物后，优先集中形成一排可持续杀敌的防线，再从它覆盖的罐子取得支援。植物不足时按已有应急能力选择取罐范围；每次扩展到新排都检查现有伤害与阻挡能否应付该排敌人。${LIVESTREAM_CUE}`;
+  }
   if (!isWhackSnapshot(snapshot)) return `${text}${LIVESTREAM_CUE}`;
   const targets = currentWhackTargets(snapshot);
   const action = targets.length

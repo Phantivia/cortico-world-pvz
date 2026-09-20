@@ -227,6 +227,8 @@ The environment instructions describe vase risk by the current firing direction:
 
 Wall-nut and ground-spike packet descriptions include their adjacent-cell interaction: a nut on the houseward side can hold a chewing zombie over spikes in the cell to its right. The model chooses the row, placement and vase order.
 
+Vasebreaker start and restart events ask the model to plan plant allocation and vase order before releasing enemies. The cue is absent from ordinary snapshots.
+
 Packet observations also identify Threepeater lane coverage and the contact-only, non-blocking damage of Spikeweed and Spikerock.
 
 ## Events and progression
