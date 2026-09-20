@@ -2091,8 +2091,7 @@ function isLifecycleExit(target: string): boolean {
 }
 
 function requiresFreshStateAfter(step: PvzDoStep): boolean {
-  // 已知种子包的放置、投掷与水族馆操作在同一棋盘内逐步核验，可连续执行。
-  if (step.skill === 'special') return !['launch', 'bowling', 'buy_snorkel', 'drop_brain'].includes(step.action);
+  if (step.skill === 'special') return !['launch', 'break_vase', 'bowling', 'buy_snorkel', 'drop_brain'].includes(step.action);
   return step.skill === 'interact'
     || step.skill === 'visual_click'
     || step.skill === 'profile_create'

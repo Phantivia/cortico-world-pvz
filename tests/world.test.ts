@@ -463,10 +463,6 @@ describe('PvzWorld 工具流程', () => {
           { skill: 'special', action: 'spin' },
         ],
         [
-          { skill: 'special', action: 'break_vase', target: { kind: 'grid_item', at: { row: 2, column: 3 } } },
-          { skill: 'collect', what: 'resources', until: 'visible_clear' },
-        ],
-        [
           { skill: 'choose_seeds', seeds: ['peashooter'], confirm: true },
           { skill: 'menu', action: 'advance' },
         ],
@@ -509,6 +505,42 @@ describe('PvzWorld 工具流程', () => {
     } finally {
       await world.stop();
     }
+  });
+
+  it.each(['complete', 'target_gone', 'rejected'] as const)('连续砸指定罐逐步核验：%s', async (scenario) => {
+    const vases = [1, 2, 3].map(id => ({ id, kind: 'vase', row: 1, column: id + 6 }));
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', mode: 51, menu: [], board: boardState({
+      gridItems: vases,
+      allowedSpecialActions: ['break_vase'],
+      special: { phase: 'playing', settled: true, targets: vases.map(vase => ({
+        action: 'break_vase', kind: 'grid_item', id: vase.id, slot: null, row: vase.row, column: vase.column,
+      })) },
+    }) }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind !== 'special' || action.action !== 'break_vase') return { accepted: false, reason: 'unexpected action' };
+      if (scenario === 'rejected' && action.targetId === 2) return { accepted: false, reason: 'target unavailable' };
+      fake.nativeResult = { outcome: 'executed', effect: 'target_changed' };
+      fake.publish(draft => {
+        const board = draft.board!;
+        board.gridItems = board.gridItems.filter(item => item.id !== action.targetId
+          && !(scenario === 'target_gone' && action.targetId === 1 && item.id === 2));
+        board.special!.targets = board.special!.targets.filter(target => board.gridItems.some(item => item.id === target.id));
+        board.collectibles.push({ id: action.targetId! + 10, kind: 'usable_seed', containedType: 0,
+          containedName: 'peashooter', x: action.column! * 80, y: 100, row: 1, column: action.column! });
+      });
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_do', { steps: vases.map(vase => ({
+        skill: 'special', action: 'break_vase', target: { kind: 'grid_item', at: { row: vase.row, column: vase.column } },
+      })) })).toContain('已受理');
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'), 3000);
+      expect(transport.state.board!.gridItems.map(item => item.id)).toEqual(
+        scenario === 'complete' ? [] : scenario === 'target_gone' ? [3] : [2, 3],
+      );
+      expect(transport.state.board!.collectibles.map(item => item.id)).toEqual(scenario === 'complete' ? [11, 12, 13] : [11]);
+      expect(await callTool(world, 'pvz_queue')).toContain(scenario === 'complete' ? '任务#1完成' : '第 2/3 步受阻');
+    } finally { await world.stop(); }
   });
 
   it.each(['complete', 'blocked', 'expired', 'placement'] as const)('种子包成对连续部署：%s', async (scenario) => {
