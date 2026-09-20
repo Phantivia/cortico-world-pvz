@@ -308,9 +308,12 @@ export function blockerLabel(blocker: string): string {
   } as Record<string, string>)[blocker] ?? '受阻';
 }
 
-/** 植物只在偏离缺省态(完好、生效中)时带括号说明;`extra` 是格子给它加的说明,如「荷叶上」。 */
+/** 植物保留反向射击和非缺省状态；extra 补充所在格的承载物。 */
 function cellPlantLabel(plant: PvzBoardState['plants'][number], extra: readonly string[] = []): string {
   const states: string[] = [];
+  if (mechanicsForCard({ type: plant.type, imitates: null })?.area === 'backward_lane') {
+    states.push('只向列号更小处射击');
+  }
   if (plant.condition !== 'intact') states.push(conditionLabel(plant.condition));
   const phase = plantPhase(plant);
   if (phase !== '生效中') states.push(phase);

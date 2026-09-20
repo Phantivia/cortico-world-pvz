@@ -24,6 +24,8 @@
 
 砸罐掉出的种子包落地后约15秒消失，手持期间不会消失。拿起一包用 `collect what:"usable_seed"`，可按 `plant` 选种类，再用 `special action:"launch",at:{row,column}` 放到选定格。为避免一轮思考期间丢失种子，可在同一队列砸一个选定罐子后紧跟 `collect what:"usable_seed"`，先拿起实际掉落，再看手持种类决定落点；没有掉落时收集是空操作。也可用 `placement:{row,edge:"nearest_house"|"farthest_house"}` 代替 at，在所选排执行时选最靠近或最远离房子的当前可用落点，避开仍被罐子等占据的格；没有落点就受阻，不换排。多包可见种子可以把 collect、launch 成对排进同一份队列；每次落地验真后才会拾取下一包，放置失败会停队。拿起种子后先放置或取消，再拿下一包。路灯透视发生变化时会更新罐子信息。
 
+种子包可以跨排使用，不必放回开出它的那一排。分配新植物前检查仍有敌人或未开罐的排：高坚果只能争取时间，仍须有能命中墙前敌人的伤害。已经清空罐子和敌人的排无需继续增加火力；新增射手优先补仍有威胁的缺口。左向射手位于坚果右侧可以攻击啃食者，位于坚果左侧则不能命中它们。
+
 种子包救急的 `launch` 也可用 `placement:{row,aheadOf:"nearest_hostile",minGap:1}`：按执行前可见快照，从指定排最近存活敌对僵尸所在格往屋方向数 minGap 格起，找第一个当前可放的格，起点最少为第1列；没有可见敌人或落点则受阻。用于窝瓜等需要靠近敌人的种子包时，可避免仍按较早的快照写死落点。植物种类、排和间隔由你选择。
 
 小丑爆炸会破坏附近植物，并打开周围一圈罐子，可能继续引发爆炸和多排突进。开罐前可预先安排种子包救急，例如 `pvz_arm({when:{all:[{collectible:{kind:"usable_seed",plant:"squash"}},{zombie:{row:2,maxColumn:4}}]},steps:[{skill:"collect",what:"usable_seed",plant:"squash"},{skill:"special",action:"launch",placement:{row:2,aheadOf:"nearest_hostile",minGap:1}}],queue:"append",maxFirings:8})`。这会在可见窝瓜包和该排近敌同时出现时，按声明的步骤拿起并放置；选择哪些排、列界限和次数由你按防线决定。

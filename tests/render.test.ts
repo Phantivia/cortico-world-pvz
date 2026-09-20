@@ -38,6 +38,16 @@ it('distinguishes an available pole, an active vault, and a spent pole', () => {
   expect(zombiePhaseLabel('pole_vault_spent')).toBe('已丢杆，不能再跳');
 });
 
+it('keeps backward firing direction on planted shooters after the seed packet is gone', () => {
+  const state = snapshot({ screen: 'board', board: boardState({ plants: [{
+    id: 1, type: PLANT_NAMES.indexOf('leftpeater'), name: 'leftpeater', row: 2, column: 8,
+    phase: 'active', condition: 'intact', sleeping: false, squished: false, layers: [],
+  }] }) });
+  for (const rendered of [renderSnapshot(state), renderTacticalSnapshot(state), JSON.stringify(compactSnapshot(state))]) {
+    expect(rendered).toContain('左向豌豆射手（只向列号更小处射击）');
+  }
+});
+
 it('reports chewing without describing a stationary walking-phase zombie as walking', () => {
   const state = snapshot({ screen: 'board', board: boardState({ zombies: [{
     id: 1, type: 0, name: 'zombie', row: 2, column: 3, columnPosition: 3.1,
