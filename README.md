@@ -221,6 +221,8 @@ Each model response may submit one `pvz_do` skill queue. Special actions other t
 
 `launch` accepts an exact `at:{row,column}` or `placement:{row,edge:"nearest_house"|"farthest_house"}`. The placement selector uses the held packet's current legal targets in the chosen row. It does not change rows when none are available; the receipt names the actual cell. A held usable packet retains its mechanics in observations until placed or cancelled.
 
+`placement:{row,aheadOf:"nearest_hostile",minGap:0..8}` selects from the visible snapshot immediately before dispatch. It starts at the nearest living hostile zombie's reported grid column minus `minGap`, clamped to column 1, then scans houseward for a legal packet target. Hypnotized and visibly dying zombies are excluded. Missing visible hostiles or legal cells stop the step; the selector does not switch rows. The plant and row remain the model's choices.
+
 A model can queue one vase break followed by `collect what:"usable_seed"` to hold a revealed packet before deciding where to place it. Vasebreaker packets expire about 15 seconds after landing; holding one preserves it during the next response. The collection step does nothing when no packet is present.
 
 The environment instructions describe vase risk by the current firing direction: a backward shooter covers vases on its left, and a Threepeater covers its own and adjacent lanes toward higher columns.

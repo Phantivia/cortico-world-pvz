@@ -45,6 +45,17 @@ it('launch 接受排内方向选择器并拒绝混用固定格或其他动作', 
   ]) expect(parsePvzDo([invalid])).toHaveProperty('error');
 });
 
+it('launch parses relative packet placement and rejects mixed or incomplete selectors', () => {
+  const step = { skill: 'special', action: 'launch', placement: { row: 2, aheadOf: 'nearest_hostile', minGap: 1 } };
+  expect(parsed([step])).toEqual([step]);
+  for (const placement of [
+    { row: 2, aheadOf: 'nearest_hostile' },
+    { ...step.placement, edge: 'nearest_house' },
+    { ...step.placement, aheadOf: 'any' },
+    ...[-1, 9, 0.5, '1'].map(minGap => ({ ...step.placement, minGap })),
+  ]) expect(parsePvzDo([{ ...step, placement }])).toHaveProperty('error');
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;

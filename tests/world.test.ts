@@ -543,7 +543,7 @@ describe('PvzWorld 工具流程', () => {
     } finally { await world.stop(); }
   });
 
-  it.each(['complete', 'blocked', 'expired', 'placement'] as const)('种子包成对连续部署：%s', async (scenario) => {
+  it.each(['complete', 'blocked', 'expired', 'placement', 'relative'] as const)('种子包成对连续部署：%s', async (scenario) => {
     const packets = [
       { id: 1, type: 0, name: 'peashooter' },
       { id: 2, type: 5, name: 'snow_pea' },
@@ -571,8 +571,14 @@ describe('PvzWorld 工具流程', () => {
           board.allowedSpecialActions = ['launch'];
           board.special = { phase: 'packet_held', settled: true, targets: packets.map(item => ({
             action: 'launch', kind: 'cell', id: null, slot: null, row: item.id,
-            column: scenario === 'placement' ? 10 - packet.id : 1,
+            column: scenario === 'placement' ? 10 - packet.id : scenario === 'relative' ? 5 - packet.id : 1,
           })) };
+          if (scenario === 'relative') board.zombies = packets.map(item => ({
+            id: item.id, type: 0, name: 'zombie', row: item.id,
+            column: 6 - packet.id, columnPosition: 5.8 - packet.id, xBand: 'mid',
+            speedCellsPerSecond: 0.2, phase: 'walking', condition: 'intact', armor: 'none', shield: 'none',
+            hypnotized: false, slowed: false, immobilized: false,
+          }));
         });
       } else if (action.kind === 'special' && action.action === 'launch') {
         if (scenario === 'blocked' && action.row === 2) return { accepted: false, reason: 'cell occupied' };
@@ -599,14 +605,16 @@ describe('PvzWorld 工具流程', () => {
         { skill: 'collect', what: 'usable_seed', plant: packet.name },
         { skill: 'special', action: 'launch', ...(scenario === 'placement'
           ? { placement: { row: packet.id, edge: 'farthest_house' } }
+          : scenario === 'relative' ? { placement: { row: packet.id, aheadOf: 'nearest_hostile', minGap: 1 } }
           : { at: { row: packet.id, column: 1 } }) },
       ]) })).toContain('已受理');
       await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'), 3000);
       expect(transport.state.board!.plants.map(plant => [plant.name, plant.row, plant.column]), await callTool(world, 'pvz_queue')).toEqual(
         scenario === 'placement' ? packets.map(packet => [packet.name, packet.id, 10 - packet.id])
+          : scenario === 'relative' ? packets.map(packet => [packet.name, packet.id, 5 - packet.id])
           : scenario === 'complete' ? packets.map(packet => [packet.name, packet.id, 1]) : [['peashooter', 1, 1]],
       );
-      if (scenario === 'complete' || scenario === 'placement') {
+      if (scenario === 'complete' || scenario === 'placement' || scenario === 'relative') {
         expect(transport.state.board!.collectibles).toEqual([]);
         expect(await callTool(world, 'pvz_queue')).toContain('任务#1完成');
         if (scenario === 'placement') expect(await callTool(world, 'pvz_queue')).toContain('第3排第7列');

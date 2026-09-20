@@ -20,10 +20,9 @@ export interface PvzCellSelector {
   column: number;
 }
 
-export interface PvzLaunchPlacementSelector {
-  row: number;
-  edge: 'nearest_house' | 'farthest_house';
-}
+export type PvzLaunchPlacementSelector =
+  | { row: number; edge: 'nearest_house' | 'farthest_house' }
+  | { row: number; aheadOf: 'nearest_hostile'; minGap: number };
 
 export type PvzSeedSelector = PvzPlantName | { plant: 'imitater'; imitates: PvzPlantName };
 
@@ -135,7 +134,9 @@ function describeAction(step: PvzDoStep): string {
       }
       const at = step.at ? ` ${cellText(step.at.row, step.at.column)}` : '';
       const placement = step.placement
-        ? ` ${rowText(step.placement.row)}${step.placement.edge === 'nearest_house' ? '最靠近' : '最远离'}房子的可用落点`
+        ? 'edge' in step.placement
+          ? ` ${rowText(step.placement.row)}${step.placement.edge === 'nearest_house' ? '最靠近' : '最远离'}房子的可用落点`
+          : ` ${describePvzPlantPosition(step.placement.row, step.placement)}`
         : '';
       const to = step.to ? ` → ${cellText(step.to.row, step.to.column)}` : '';
       return `特殊操作 ${step.action}${step.card ? `(${step.card})` : ''}${at}${placement}${to}`;
@@ -357,12 +358,16 @@ function parseSpecial(value: Record<string, unknown>, index: number): { step: Pv
   let placement: PvzLaunchPlacementSelector | undefined;
   if (value.placement !== undefined) {
     const selector = object(value.placement);
-    if (action !== 'launch' || at || !selector || keys(selector, ['row', 'edge'])
-      || !Number.isInteger(selector.row) || (selector.row as number) < 1 || (selector.row as number) > 6
-      || !['nearest_house', 'farthest_house'].includes(selector.edge as string)) {
-      return { error: `第 ${index} 步 placement 只用于 launch，与 at 二选一，格式 {row,edge:"nearest_house"|"farthest_house"}` };
+    const edge = selector && !keys(selector, ['row', 'edge'])
+      && ['nearest_house', 'farthest_house'].includes(selector.edge as string);
+    const relative = selector && !keys(selector, ['row', 'aheadOf', 'minGap'])
+      && selector.aheadOf === 'nearest_hostile' && integer(selector.minGap, 0, 8);
+    if (action !== 'launch' || at || !selector || !integer(selector.row, 1, 6) || (!edge && !relative)) {
+      return { error: `第 ${index} 步 placement 只用于 launch，与 at 二选一，格式 {row,edge:"nearest_house"|"farthest_house"} 或 {row,aheadOf:"nearest_hostile",minGap:0–8}` };
     }
-    placement = { row: selector.row as number, edge: selector.edge as PvzLaunchPlacementSelector['edge'] };
+    placement = edge
+      ? { row: selector.row, edge: selector.edge as 'nearest_house' | 'farthest_house' }
+      : { row: selector.row, aheadOf: 'nearest_hostile', minGap: selector.minGap as number };
   }
   const card = value.card === undefined ? undefined : semanticText(value.card);
   if (value.card !== undefined && !card) {

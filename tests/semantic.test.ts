@@ -286,6 +286,32 @@ const SPECIAL_CASES: SpecialCase[] = [
 ];
 
 describe('PvZ semantic special actions', () => {
+  it('places held packets ahead of the current visible hostile and stops when that scope disappears', () => {
+    const board = specialBoard();
+    board.special!.targets = [1, 3, 6].map(column => target('launch', 'cell', { row: 1, column }));
+    board.special!.targets.push(target('launch', 'cell', { row: 2, column: 9 }));
+    const hostile = { id: 50, type: 0, name: 'zombie', row: 1, column: 7, columnPosition: 6.7,
+      xBand: 'far' as const, speedCellsPerSecond: 0.2, phase: 'walking', condition: 'intact' as const,
+      armor: 'none' as const, shield: 'none' as const, hypnotized: false, slowed: false, immobilized: false };
+    board.zombies = [hostile, { ...hostile, id: 51, column: 1, columnPosition: 1, hypnotized: true },
+      { ...hostile, id: 52, column: 2, columnPosition: 2, phase: 'dying' }];
+    const request = { action: 'launch', placement: { row: 1, aheadOf: 'nearest_hostile', minGap: 1 } };
+    expect(resolveSemanticSpecialAction(board, request)).toEqual({ kind: 'special', action: 'launch', row: 1, column: 6 });
+    hostile.column = 3;
+    hostile.columnPosition = 2.8;
+    expect(resolveSemanticSpecialAction(board, request)).toEqual({ kind: 'special', action: 'launch', row: 1, column: 1 });
+    board.special!.targets = board.special!.targets.filter(item => item.column !== 1);
+    expect(() => resolveSemanticSpecialAction(board, request)).toThrow('第1排当前没有手持种子包的可用落点');
+    board.zombies = board.zombies.filter(zombie => zombie.id !== hostile.id);
+    expect(() => resolveSemanticSpecialAction(board, request)).toThrow('没有可见的存活敌对僵尸');
+    board.zombies = [hostile];
+    board.disclosure.entitiesVisible = false;
+    expect(() => resolveSemanticSpecialAction(board, request)).toThrow('没有可见的存活敌对僵尸');
+    board.disclosure.entitiesVisible = true;
+    board.fog.visibilityRule = 'invisighoul';
+    expect(() => resolveSemanticSpecialAction(board, request)).toThrow('没有可见的存活敌对僵尸');
+  });
+
   it('resolves packet placement from the current legal targets within the chosen row', () => {
     const board = specialBoard();
     board.special!.targets.push(

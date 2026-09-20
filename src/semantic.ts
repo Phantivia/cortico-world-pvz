@@ -1,4 +1,5 @@
 import { isSunCollectible, isTerminalCollectible } from './collectibles.ts';
+import type { PvzLaunchPlacementSelector } from './skills.ts';
 import {
   cardDisplayNameOf,
   cellText,
@@ -93,7 +94,7 @@ export type PvzSemanticTargetSelector =
 export interface PvzSemanticSpecialRequest {
   action: string;
   at?: PvzSemanticCell;
-  placement?: { row: number; edge: 'nearest_house' | 'farthest_house' };
+  placement?: PvzLaunchPlacementSelector;
   to?: PvzSemanticCell;
   card?: PvzSemanticCardSelector;
   target?: PvzSemanticTargetSelector;
@@ -384,18 +385,32 @@ export function resolveSemanticSpecialAction(
     if (action === 'launch' && input.placement !== undefined) {
       exactKeys(input, ['action', 'placement'], action);
       const placement = strictRecord(input.placement, 'launch.placement');
-      exactKeys(placement, ['row', 'edge'], 'launch.placement');
+      const relative = placement.aheadOf !== undefined;
+      exactKeys(placement, relative ? ['row', 'aheadOf', 'minGap'] : ['row', 'edge'], 'launch.placement');
       const row = placement.row;
       if (!Number.isInteger(row) || (row as number) < 1 || (row as number) > board.rows
-        || !['nearest_house', 'farthest_house'].includes(placement.edge as string)) {
-        throw new PvzSemanticError('invalid_selector', 'launch.placement 必须是 {row,edge:"nearest_house"|"farthest_house"}，row 在当前棋盘内');
+        || (relative
+          ? placement.aheadOf !== 'nearest_hostile' || !Number.isInteger(placement.minGap)
+            || (placement.minGap as number) < 0 || (placement.minGap as number) > 8
+          : !['nearest_house', 'farthest_house'].includes(placement.edge as string))) {
+        throw new PvzSemanticError('invalid_selector', 'launch.placement 必须是 {row,edge:"nearest_house"|"farthest_house"} 或 {row,aheadOf:"nearest_hostile",minGap:0–8}，row 在当前棋盘内');
       }
-      const columns = targets.filter(target => target.kind === 'cell' && target.row === row && target.column !== null)
+      let columns = targets.filter(target => target.kind === 'cell' && target.row === row && target.column !== null)
         .map(target => target.column!);
+      if (relative) {
+        const hostile = board.disclosure.entitiesVisible && board.fog.visibilityRule !== 'invisighoul'
+          ? board.zombies.filter(zombie => zombie.row === row && !zombie.hypnotized
+            && !['dying', 'burned', 'mowed'].includes(zombie.phase ?? ''))
+            .sort((left, right) => left.columnPosition - right.columnPosition || left.id - right.id)[0]
+          : undefined;
+        if (!hostile) throw new PvzSemanticError('unavailable', `第${row}排当前没有可见的存活敌对僵尸`);
+        const start = Math.max(1, hostile.column - (placement.minGap as number));
+        columns = columns.filter(column => column <= start);
+      }
       if (!columns.length) {
         throw new PvzSemanticError('unavailable', `第${row}排当前没有手持种子包的可用落点`);
       }
-      const column = placement.edge === 'nearest_house' ? Math.min(...columns) : Math.max(...columns);
+      const column = !relative && placement.edge === 'nearest_house' ? Math.min(...columns) : Math.max(...columns);
       return { kind: 'special', action, row: row as number, column };
     }
     exactKeys(input, ['action', 'at'], action);

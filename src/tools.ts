@@ -182,13 +182,19 @@ const PVZ_STEP_SCHEMA = {
         },
         at: CELL_SCHEMA,
         placement: {
-          type: 'object',
-          properties: {
-            row: CELL_PROPERTIES.row,
-            edge: { type: 'string', enum: ['nearest_house', 'farthest_house'] },
-          },
-          required: ['row', 'edge'], additionalProperties: false,
-          description: '只用于 launch，与 at 二选一。执行时在指定排的当前可用落点中选最靠近或最远离房子的格；可避开仍有罐子或不兼容植物的格。没有落点则受阻，不换排。回执给出实际格子。',
+          oneOf: [{
+            type: 'object', properties: {
+              row: CELL_PROPERTIES.row,
+              edge: { type: 'string', enum: ['nearest_house', 'farthest_house'] },
+            }, required: ['row', 'edge'], additionalProperties: false,
+          }, {
+            type: 'object', properties: {
+              row: CELL_PROPERTIES.row,
+              aheadOf: { type: 'string', enum: ['nearest_hostile'] },
+              minGap: { type: 'integer', minimum: 0, maximum: 8 },
+            }, required: ['row', 'aheadOf', 'minGap'], additionalProperties: false,
+          }],
+          description: '只用于 launch，与 at 二选一。edge 选指定排最靠近或最远离房子的当前可用格；aheadOf 按执行前的可见快照，从该排最近存活敌对僵尸所在格向屋方向数 minGap 格起，选第一个当前可放的格，起点最少为第1列。目标不存在或没有落点则受阻，不换排。回执给出实际格子。',
         },
         to: CELL_SCHEMA,
         card: {
