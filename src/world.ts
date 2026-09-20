@@ -823,10 +823,12 @@ export class PvzWorld implements World {
         plant.row === row && plant.column === column)) {
         return { outcome: 'blocked', text: `${cellText(row, column)}不是当前铲子教程目标` };
       }
-      return this.semanticReceipt(
-        await this.requireRuntime().act({ kind: 'shovel', row, column }),
-        `${cellText(row, column)}已铲除`,
-      );
+      const receipt = await this.requireRuntime().act({ kind: 'shovel', row, column });
+      if (!board.tutorial && receipt.status === 'rejected'
+        && receipt.evidence.includes('no visible plant exists at the requested cell')) {
+        return { outcome: 'yield', text: `${cellText(row, column)}当前没有可见植物，已跳过铲除` };
+      }
+      return this.semanticReceipt(receipt, `${cellText(row, column)}已铲除`);
     }
     if (step.skill === 'collect') return this.executeCollectTask(step, context);
     if (step.skill === 'auto_sun') return this.executeSunSweep();

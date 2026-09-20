@@ -3322,6 +3322,45 @@ describe('PvzWorld 特殊关卡', () => {
 });
 
 describe('PvzWorld 伪阻塞', () => {
+  it('continues rebuilding after a shovel target disappears before native input', async () => {
+    const card = { slot: 0, type: 33, name: 'flower_pot', imitates: null, cost: null,
+      ready: true, affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0,
+      cooldownRemainingSeconds: 0, x: 80, y: 40 };
+    const transport = new FakePvzTransport(snapshot({ screen: 'board', menu: [], board: boardState({
+      background: 5, cards: [card, { ...card, slot: 1, type: 32, name: 'cabbage_pult' }],
+      plants: [{ id: 1, type: 32, name: 'cabbage_pult', row: 2, column: 3,
+        condition: 'intact', sleeping: false, squished: false, layers: [] }],
+    }) }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind === 'shovel') {
+        fake.publish(draft => { draft.board!.plants = []; });
+        fake.nativeResult = { outcome: 'rejected', reason: 'no visible plant exists at the requested cell' };
+      } else if (action.kind === 'plant' && 'column' in action) {
+        const used = fake.state.board!.cards.find(item => item.slot === action.slot)!;
+        fake.nativeResult = { outcome: 'executed', effect: 'card_consumed' };
+        fake.publish(draft => {
+          draft.board!.plants.push({ id: 100 + used.type, type: used.type, name: used.name,
+            row: action.row, column: action.column, condition: 'intact', sleeping: false, squished: false, layers: [] });
+          draft.board!.cards = draft.board!.cards.filter(item => item.slot !== action.slot)
+            .map((item, slot) => ({ ...item, slot }));
+        });
+      }
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      await callTool(world, 'pvz_do', { steps: [
+        { skill: 'shovel', row: 2, column: 3 },
+        { skill: 'plant', plant: 'flower_pot', row: 2, column: 3 },
+        { skill: 'plant', plant: 'cabbage_pult', row: 2, column: { emptyPot: 'nearest_house' } },
+      ] });
+      await waitUntil(() => host.events.some(({ event }) => event.senderKey === 'pvz.task.1'));
+      expect(transport.state.board!.cards).toHaveLength(0);
+      expect(transport.state.board!.plants.map(plant => [plant.name, plant.row, plant.column]))
+        .toEqual([['flower_pot', 2, 3], ['cabbage_pult', 2, 3]]);
+      expect(await callTool(world, 'pvz_queue')).toContain('部分完成:第2排第3列当前没有可见植物，已跳过铲除');
+    } finally { await world.stop(); }
+  });
+
   it('resolves each empty-pot step from fresh occupancy and skips rows without a pot', async () => {
     const card = { slot: 0, type: 33, name: 'flower_pot', imitates: null, cost: null,
       ready: true, affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0,
