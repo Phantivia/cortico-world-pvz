@@ -72,6 +72,10 @@ function cardMechanicsFacts(card: Pick<PvzCard, 'type' | 'imitates'>): string[] 
   if (mechanics.area === 'centered_nearby_area') facts.push('周围近程');
   if (mechanics.area === 'backward_lane') facts.push('只攻击本排列号更小的敌人，应位于敌人右侧');
   if (mechanics.area === 'forward_and_backward_lane') facts.push('同时向前后射击');
+  if (mechanics.area === 'three_adjacent_forward_lanes') facts.push('向较大列号射击，覆盖本排和相邻排');
+  if (mechanics.area === 'self_cell' && mechanics.trigger === 'enemy_overlap') {
+    facts.push('只伤害踩在本格的地面敌人，不阻挡');
+  }
   if (mechanics.effect === 'hypnotize_biting_zombie') facts.push('被吃后魅惑咬它的僵尸');
   if (mechanics.effect === 'remove_metal_equipment') facts.push('吸走附近金属装备，自身不攻击');
   if (mechanics.effect === 'convert_passing_peas_to_fire') facts.push('点燃穿过本格的豌豆，自身不攻击');
