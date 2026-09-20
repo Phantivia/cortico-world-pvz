@@ -500,10 +500,9 @@ export class PvzWorld implements World {
         const step = parsed.steps[index]!;
         if (step.skill === 'collect' && step.what === 'usable_seed') {
           const next = parsed.steps[index + 1];
-          if (index !== parsed.steps.length - 2
-            || next?.skill !== 'special' || next.action !== 'launch') {
+          if (next?.skill !== 'special' || next.action !== 'launch') {
             throw new Error(
-              `第 ${index + 1} 步捡起可用种子包后，只能紧跟一个作为队尾的 launch；该种子落地并返回新快照后再规划下一包`,
+              `第 ${index + 1} 步捡起可用种子包后，必须紧跟 launch 放置，或在此结束队列`,
             );
           }
         }
@@ -2090,8 +2089,8 @@ function isLifecycleExit(target: string): boolean {
 }
 
 function requiresFreshStateAfter(step: PvzDoStep): boolean {
-  // 投掷与水族馆的购买、投喂在同一棋盘内逐步核验，可连续执行。
-  if (step.skill === 'special') return !['bowling', 'buy_snorkel', 'drop_brain'].includes(step.action);
+  // 已知种子包的放置、投掷与水族馆操作在同一棋盘内逐步核验，可连续执行。
+  if (step.skill === 'special') return !['launch', 'bowling', 'buy_snorkel', 'drop_brain'].includes(step.action);
   return step.skill === 'interact'
     || step.skill === 'visual_click'
     || step.skill === 'profile_create'

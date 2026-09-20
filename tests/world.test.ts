@@ -498,7 +498,7 @@ describe('PvzWorld 工具流程', () => {
         ],
       });
       expect(futurePacket).toContain('[pvz_do 失败]');
-      expect(futurePacket).toContain('只能紧跟一个作为队尾的 launch');
+      expect(futurePacket).toContain('必须紧跟 launch 放置');
 
       expect(await callTool(world, 'pvz_do', {
         steps: [
@@ -509,6 +509,75 @@ describe('PvzWorld 工具流程', () => {
     } finally {
       await world.stop();
     }
+  });
+
+  it.each(['complete', 'blocked', 'expired'] as const)('种子包成对连续部署：%s', async (scenario) => {
+    const packets = [
+      { id: 1, type: 0, name: 'peashooter' },
+      { id: 2, type: 5, name: 'snow_pea' },
+      { id: 3, type: 17, name: 'squash' },
+    ];
+    const transport = new FakePvzTransport(snapshot({
+      screen: 'board', mode: 51, menu: [],
+      board: boardState({
+        collectibles: packets.map(packet => ({
+          id: packet.id, kind: 'usable_seed', containedType: packet.type, containedName: packet.name,
+          x: 400, y: packet.id * 100, row: packet.id, column: 5,
+        })),
+      }),
+    }));
+    transport.actionHandler = (action, fake) => {
+      if (action.kind === 'collect') {
+        if (fake.state.board!.cursor.kind !== 'normal') return { accepted: false, reason: 'cursor occupied' };
+        const packet = fake.state.board!.collectibles.find(item => action.ids.includes(item.id));
+        if (!packet) return { accepted: false, reason: 'packet missing' };
+        fake.nativeResult = { outcome: 'executed', effect: 'collectibles_collected' };
+        fake.publish(draft => {
+          const board = draft.board!;
+          board.collectibles = board.collectibles.filter(item => item.id !== packet.id);
+          board.cursor = { kind: 'usable_seed', heldType: packet.containedType!, logicalX: 400, logicalY: 100 };
+          board.allowedSpecialActions = ['launch'];
+          board.special = { phase: 'packet_held', settled: true, targets: packets.map(item => ({
+            action: 'launch', kind: 'cell', id: null, slot: null, row: item.id, column: 1,
+          })) };
+        });
+      } else if (action.kind === 'special' && action.action === 'launch') {
+        if (scenario === 'blocked' && action.row === 2) return { accepted: false, reason: 'cell occupied' };
+        fake.nativeResult = { outcome: 'executed', effect: 'usable_seed_consumed' };
+        fake.publish(draft => {
+          const board = draft.board!;
+          const packet = packets.find(item => item.type === board.cursor.heldType)!;
+          board.plants.push({
+            id: 100 + packet.id, type: packet.type, name: packet.name, row: action.row!, column: action.column!,
+            phase: 'idle', condition: 'intact', sleeping: false, squished: false, layers: [],
+          });
+          board.cursor = { kind: 'normal', heldType: null, logicalX: 100, logicalY: 100 };
+          board.allowedSpecialActions = [];
+          board.special = null;
+          if (scenario === 'expired' && action.row === 1) {
+            board.collectibles = board.collectibles.filter(item => item.id !== 2);
+          }
+        });
+      }
+    };
+    const { world, host } = await startWorld(transport);
+    try {
+      expect(await callTool(world, 'pvz_do', { steps: packets.flatMap(packet => [
+        { skill: 'collect', what: 'usable_seed', plant: packet.name },
+        { skill: 'special', action: 'launch', at: { row: packet.id, column: 1 } },
+      ]) })).toContain('已受理');
+      await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'), 3000);
+      expect(transport.state.board!.plants.map(plant => [plant.name, plant.row, plant.column]), await callTool(world, 'pvz_queue')).toEqual(
+        scenario === 'complete' ? packets.map(packet => [packet.name, packet.id, 1]) : [['peashooter', 1, 1]],
+      );
+      if (scenario === 'complete') {
+        expect(transport.state.board!.collectibles).toEqual([]);
+        expect(await callTool(world, 'pvz_queue')).toContain('任务#1完成');
+      } else {
+        expect(transport.state.board!.collectibles.map(item => item.id)).toEqual([3]);
+        expect(await callTool(world, 'pvz_queue')).toContain('第 4/6 步受阻');
+      }
+    } finally { await world.stop(); }
   });
 
   it('条件种植停放并在卡片就绪且阳光足够后自动执行', async () => {

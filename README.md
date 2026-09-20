@@ -217,7 +217,7 @@ Restart and main-menu actions can open a confirmation dialog. That transition is
 
 Receipts, events, and snapshots name rows and columns the way a person would — 第4排第8.6列 — and use plant and zombie display names rather than engine identifiers. The public surface accepts plant names, cells, and semantic selectors. Special steps use `at`, `to`, `card`, or `target:{kind,name?,at?}`. Whack-a-Zombie uses `targets:[{kind:"zombie",scope:"all_visible"}]`; each skill binds at most 32 then-visible zombies when it starts and freezes those identities for one finite batch. Native object identifiers, seed-bank slots, and target identifiers never cross the agent-facing mapping layer.
 
-Each model response may submit one `pvz_do` skill queue. A special action, confirmed seed selection, award collection, interaction, or visual fallback is a decision barrier and must end that queue; its terminal receipt carries the fresh state used to plan the next queue. A usable seed packet may be paired only with one immediately following, queue-final `launch`.
+Each model response may submit one `pvz_do` skill queue. Special actions other than `launch`, `bowling`, `buy_snorkel`, and `drop_brain` must end that queue, as must confirmed seed selection, award collection, interaction, and visual fallback. Their terminal receipt carries the fresh state used to plan the next queue. A usable seed pickup must end the queue or be followed immediately by `launch`. Multiple pickup/placement pairs can run in one queue; each placement is verified before the next pickup, and a failed placement stops the queue.
 
 ## Events and progression
 

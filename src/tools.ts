@@ -166,7 +166,7 @@ const PVZ_STEP_SCHEMA = {
         },
         until: {
           type: 'string', enum: ['once', 'visible_clear'],
-          description: 'visible_clear 持续收集当前可见类别；usable_seed 只允许 once，拿起后用 special action:launch 放置。可单独拾取后再选落点，或紧跟一个队尾 launch。',
+          description: 'visible_clear 持续收集当前可见类别；usable_seed 只允许 once。可在队尾单独拾取，或紧跟 special action:launch 放置；多包已知种子可按 collect、launch 成对连续安排，每次放置验真后才拾取下一包。',
         },
         plant: { type: 'string', description: '仅 usable_seed 可用：指定要拾取的植物名称。省略则拾取任意一包；指定植物当前不可见时不拾取其他种类。' },
       },
@@ -178,7 +178,7 @@ const PVZ_STEP_SCHEMA = {
       properties: {
         skill: { type: 'string', enum: ['special'] },
         action: { type: 'string', maxLength: 128,
-          description: '使用状态中的特殊动作名，接受中文或规范英文。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。',
+          description: '使用状态中的特殊动作名，接受中文或规范英文。砸花瓶(break_vase)用 target:{kind:"grid_item",name:"花瓶",at:{row,column}}；放置种子包(launch)用 at:{row,column}。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。',
         },
         at: CELL_SCHEMA,
         to: CELL_SCHEMA,
