@@ -205,7 +205,7 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
     } finally { await world.stop(); }
   });
 
-  it.each(['boss', 'nearby zombie'])('uses two packets across two %s thaws and leaves the third unused', async source => {
+  it.each(['boss', 'nearby zombie', 'unprotected zombie'])('uses two packets across two %s thaws and leaves the third unused', async source => {
     const card = { slot: 0, type: 14, name: 'ice_shroom', imitates: null, cost: null, ready: true,
       affordable: true, cooldown: 'ready' as const, cooldownRemainingPercent: 0, cooldownRemainingSeconds: 0,
       x: 150, y: 40 };
@@ -231,7 +231,8 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
     const { world, host } = await startWorld(transport);
     try {
       const when = source === 'boss' ? { boss: { vulnerable: true, immobilized: false } }
-        : { zombie: { row: [2, 3], maxColumn: 4, immobilized: false } };
+        : { zombie: { row: [2, 3], maxColumn: 4, immobilized: false,
+          ...(source === 'unprotected zombie' ? { hasUsableMower: false } : {}) } };
       const thaw = () => transport.publish(draft => {
         if (source === 'boss') draft.board!.boss!.immobilized = false;
         else draft.board!.zombies[0]!.immobilized = false;
@@ -245,6 +246,11 @@ describe('PvZ 触发器:条件独立于队列,打响那一刻才把队列交出�
       expect((await world.photoFrame()).text).toContain('寒冰菇：可新排1张（已安排2张）');
       for (const remaining of [2, 1]) {
         thaw();
+        if (source === 'unprotected zombie' && remaining === 2) {
+          await afterTimers(30);
+          expect(transport.state.board!.cards).toHaveLength(3);
+          transport.publish(draft => { draft.board!.mowers.find(mower => mower.row === 3)!.state = 'squished'; });
+        }
         await afterTimers(150);
         expect(transport.state.board!.cards).toHaveLength(remaining);
         expect(transport.state.board!.boss!.immobilized).toBe(true);

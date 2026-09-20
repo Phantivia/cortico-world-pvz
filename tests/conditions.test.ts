@@ -71,6 +71,32 @@ describe('PvZ condition parsing', () => {
     }
   });
 
+  it('counts exposed lanes per zombie and keeps hidden mower absence unknown', () => {
+    const condition = parse({ zombie: { row: [2, 3], maxColumn: 4, hasUsableMower: false } });
+    const board = boardState({ zombies: [zombie({ row: 2, columnPosition: 3.5 })],
+      mowers: [{ row: 2, kind: 'roof_cleaner', state: 'ready' }],
+    });
+    expect(evaluate(condition, board)).toBe(false);
+    board.mowers[0]!.state = 'triggered';
+    expect(evaluate(condition, board)).toBe(false);
+    board.mowers[0]!.state = 'squished';
+    expect(evaluate(condition, board)).toBe(true);
+    expect(evaluate(parse({ zombie: { row: 2, hasUsableMower: true } }), board)).toBe(false);
+    expect(describePvzCondition(condition)).toContain('所在排无有效清洁车');
+    board.mowers = [{ row: 3, kind: 'roof_cleaner', state: 'ready' }];
+    expect(evaluate(condition, board)).toBe(true);
+    const home = board.cells.find(cell => cell.row === 2 && cell.column === 1)!;
+    home.playable = null;
+    expect(evaluate(condition, board)).toBeNull();
+    expect(evaluate(parse({ zombie: { row: 2, maxColumn: 4, hasUsableMower: true } }), board)).toBeNull();
+    home.playable = true;
+    board.zombies[0]!.hypnotized = true;
+    expect(evaluate(condition, board)).toBe(false);
+    for (const hasUsableMower of [null, 0, 'false', undefined]) {
+      expect(parsePvzCondition({ zombie: { row: 2, hasUsableMower } })).toHaveProperty('error');
+    }
+  });
+
   it('matches exposed boss windows and thaw without treating missing observations as false', () => {
     const condition = parse({ boss: { vulnerable: true, immobilized: false } });
     const board = boardState({ boss: { phase: 'boss_idle', immobilized: false, projectile: null } });
