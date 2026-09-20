@@ -286,6 +286,25 @@ const SPECIAL_CASES: SpecialCase[] = [
 ];
 
 describe('PvZ semantic special actions', () => {
+  it('resolves packet placement from the current legal targets within the chosen row', () => {
+    const board = specialBoard();
+    board.special!.targets.push(
+      target('launch', 'cell', { row: 1, column: 2 }),
+      target('launch', 'cell', { row: 1, column: 8 }),
+      target('launch', 'cell', { row: 2, column: 9 }),
+    );
+    const near = { action: 'launch', placement: { row: 1, edge: 'nearest_house' } };
+    const far = { action: 'launch', placement: { row: 1, edge: 'farthest_house' } };
+    expect(resolveSemanticSpecialAction(board, near)).toEqual({ kind: 'special', action: 'launch', row: 1, column: 2 });
+    expect(resolveSemanticSpecialAction(board, far)).toEqual({ kind: 'special', action: 'launch', row: 1, column: 8 });
+    board.special!.targets = board.special!.targets.filter(item => item.action !== 'launch' || item.column !== 8);
+    expect(resolveSemanticSpecialAction(board, far)).toEqual({ kind: 'special', action: 'launch', row: 1, column: 4 });
+    board.special!.targets = board.special!.targets.filter(item => item.action !== 'launch' || item.row !== 1);
+    expect(() => resolveSemanticSpecialAction(board, far)).toThrow('第1排当前没有手持种子包的可用落点');
+    expect(() => resolveSemanticSpecialAction(board, { ...far, at: { row: 2, column: 9 } })).toThrow('不接受字段 at');
+    expect(() => resolveSemanticSpecialAction(board, { action: 'launch', placement: { row: 6, edge: 'nearest_house' } })).toThrow('row 在当前棋盘内');
+  });
+
   it.each(SPECIAL_CASES)('resolves $request.action without caller ids or slots', ({ request, expected }) => {
     expect(resolveSemanticSpecialAction(specialBoard(), request)).toEqual(expected);
   });

@@ -511,7 +511,7 @@ describe('PvzWorld 工具流程', () => {
     }
   });
 
-  it.each(['complete', 'blocked', 'expired'] as const)('种子包成对连续部署：%s', async (scenario) => {
+  it.each(['complete', 'blocked', 'expired', 'placement'] as const)('种子包成对连续部署：%s', async (scenario) => {
     const packets = [
       { id: 1, type: 0, name: 'peashooter' },
       { id: 2, type: 5, name: 'snow_pea' },
@@ -538,7 +538,8 @@ describe('PvzWorld 工具流程', () => {
           board.cursor = { kind: 'usable_seed', heldType: packet.containedType!, logicalX: 400, logicalY: 100 };
           board.allowedSpecialActions = ['launch'];
           board.special = { phase: 'packet_held', settled: true, targets: packets.map(item => ({
-            action: 'launch', kind: 'cell', id: null, slot: null, row: item.id, column: 1,
+            action: 'launch', kind: 'cell', id: null, slot: null, row: item.id,
+            column: scenario === 'placement' ? 10 - packet.id : 1,
           })) };
         });
       } else if (action.kind === 'special' && action.action === 'launch') {
@@ -564,15 +565,19 @@ describe('PvzWorld 工具流程', () => {
     try {
       expect(await callTool(world, 'pvz_do', { steps: packets.flatMap(packet => [
         { skill: 'collect', what: 'usable_seed', plant: packet.name },
-        { skill: 'special', action: 'launch', at: { row: packet.id, column: 1 } },
+        { skill: 'special', action: 'launch', ...(scenario === 'placement'
+          ? { placement: { row: packet.id, edge: 'farthest_house' } }
+          : { at: { row: packet.id, column: 1 } }) },
       ]) })).toContain('已受理');
       await waitUntil(() => host.events.some(({ event }) => event.type === 'pvz.task'), 3000);
       expect(transport.state.board!.plants.map(plant => [plant.name, plant.row, plant.column]), await callTool(world, 'pvz_queue')).toEqual(
-        scenario === 'complete' ? packets.map(packet => [packet.name, packet.id, 1]) : [['peashooter', 1, 1]],
+        scenario === 'placement' ? packets.map(packet => [packet.name, packet.id, 10 - packet.id])
+          : scenario === 'complete' ? packets.map(packet => [packet.name, packet.id, 1]) : [['peashooter', 1, 1]],
       );
-      if (scenario === 'complete') {
+      if (scenario === 'complete' || scenario === 'placement') {
         expect(transport.state.board!.collectibles).toEqual([]);
         expect(await callTool(world, 'pvz_queue')).toContain('任务#1完成');
+        if (scenario === 'placement') expect(await callTool(world, 'pvz_queue')).toContain('第3排第7列');
       } else {
         expect(transport.state.board!.collectibles.map(item => item.id)).toEqual([3]);
         expect(await callTool(world, 'pvz_queue')).toContain('第 4/6 步受阻');

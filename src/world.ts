@@ -844,6 +844,7 @@ export class PvzWorld implements World {
       const request: Record<string, unknown> = {
         action: step.action,
         ...(step.at ? { at: step.at } : {}),
+        ...(step.placement ? { placement: step.placement } : {}),
         ...(step.to ? { to: step.to } : {}),
         ...(step.card ? { card: step.card } : {}),
         ...(step.target ? { target: step.target } : {}),
@@ -856,7 +857,8 @@ export class PvzWorld implements World {
       }
       return this.semanticReceipt(
         await this.requireRuntime().act(action),
-        `特殊操作 ${step.action} 已完成`,
+        `特殊操作 ${step.action} 已完成${action.kind === 'special' && action.action === 'launch'
+          ? `：${cellText(action.row!, action.column!)}` : ''}`,
       );
     }
     if (step.skill === 'interact') {

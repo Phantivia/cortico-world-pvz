@@ -181,6 +181,15 @@ const PVZ_STEP_SCHEMA = {
           description: '使用状态中的特殊动作名，接受中文或规范英文。砸花瓶(break_vase)用 target:{kind:"grid_item",name:"花瓶",at:{row,column}}；放置种子包(launch)用 at:{row,column}。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。',
         },
         at: CELL_SCHEMA,
+        placement: {
+          type: 'object',
+          properties: {
+            row: CELL_PROPERTIES.row,
+            edge: { type: 'string', enum: ['nearest_house', 'farthest_house'] },
+          },
+          required: ['row', 'edge'], additionalProperties: false,
+          description: '只用于 launch，与 at 二选一。执行时在指定排的当前可用落点中选最靠近或最远离房子的格；可避开仍有罐子或不兼容植物的格。没有落点则受阻，不换排。回执给出实际格子。',
+        },
         to: CELL_SCHEMA,
         card: {
           type: 'string', maxLength: 128,
@@ -240,8 +249,8 @@ export const PVZ_TOOL_DECLS: readonly PvzToolDeclaration[] = [
     name: 'pvz_do',
     tags: ['act'],
     description: '提交一份有序动作队列并返回任务号。每个响应最多调用一次。'
-      + '确认选卡、收取奖励、界面交互、画面点击与除投掷坚果、水族馆购买僵尸和投喂以外的特殊动作会改变界面或阶段，'
-      + '这类步骤放在队尾，一份队列里只放一个。bowling、buy_snorkel、drop_brain 可以连续多步，每一步都核对当前资源和目标；drop_brain 用 at 指定投喂格，每次花费5阳光，场上最多3个脑子。',
+      + '确认选卡、收取奖励、界面交互、画面点击与除放置种子包、投掷坚果、水族馆购买僵尸和投喂以外的特殊动作会改变界面或阶段，'
+      + '这类步骤放在队尾，一份队列里只放一个。launch、bowling、buy_snorkel、drop_brain 可以连续多步，每一步都核对当前资源和目标；种子包按 collect、launch 成对安排。drop_brain 用 at 指定投喂格，每次花费5阳光，场上最多3个脑子。',
     parameters: {
       type: 'object',
       properties: {

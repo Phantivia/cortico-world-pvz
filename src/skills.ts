@@ -20,6 +20,11 @@ export interface PvzCellSelector {
   column: number;
 }
 
+export interface PvzLaunchPlacementSelector {
+  row: number;
+  edge: 'nearest_house' | 'farthest_house';
+}
+
 export type PvzSeedSelector = PvzPlantName | { plant: 'imitater'; imitates: PvzPlantName };
 
 export type PvzPlantColumn = number | { aheadOf: 'nearest_hostile'; minGap: number }
@@ -71,6 +76,7 @@ export type PvzDoStep =
       skill: 'special';
       action: string;
       at?: PvzCellSelector;
+      placement?: PvzLaunchPlacementSelector;
       to?: PvzCellSelector;
       card?: string;
       target?: PvzSpecialTargetSelector;
@@ -128,8 +134,11 @@ function describeAction(step: PvzDoStep): string {
         return `锤击当前可见僵尸 ${step.targets.map(specialTargetName).join('、')}`;
       }
       const at = step.at ? ` ${cellText(step.at.row, step.at.column)}` : '';
+      const placement = step.placement
+        ? ` ${rowText(step.placement.row)}${step.placement.edge === 'nearest_house' ? '最靠近' : '最远离'}房子的可用落点`
+        : '';
       const to = step.to ? ` → ${cellText(step.to.row, step.to.column)}` : '';
-      return `特殊操作 ${step.action}${step.card ? `(${step.card})` : ''}${at}${to}`;
+      return `特殊操作 ${step.action}${step.card ? `(${step.card})` : ''}${at}${placement}${to}`;
     }
     case 'interact': return `交互 ${step.target}`;
     case 'visual_click': return `兼容点击 (${step.x},${step.y})`;
@@ -336,7 +345,7 @@ function parseCollect(value: Record<string, unknown>, index: number): { step: Pv
 }
 
 function parseSpecial(value: Record<string, unknown>, index: number): { step: PvzDoStep } | { error: string } {
-  const invalid = keys(value, ['skill', 'action', 'at', 'to', 'card', 'target', 'targets']);
+  const invalid = keys(value, ['skill', 'action', 'at', 'placement', 'to', 'card', 'target', 'targets']);
   if (invalid) return badField(index, invalid);
   const actionText = semanticText(value.action);
   if (!actionText) return { error: `第 ${index} 步 action 必须是语义名称` };
@@ -345,6 +354,16 @@ function parseSpecial(value: Record<string, unknown>, index: number): { step: Pv
   const to = value.to === undefined ? undefined : parseCell(value.to);
   if (value.at !== undefined && !at) return { error: `第 ${index} 步 at 必须是 {row,column}` };
   if (value.to !== undefined && !to) return { error: `第 ${index} 步 to 必须是 {row,column}` };
+  let placement: PvzLaunchPlacementSelector | undefined;
+  if (value.placement !== undefined) {
+    const selector = object(value.placement);
+    if (action !== 'launch' || at || !selector || keys(selector, ['row', 'edge'])
+      || !Number.isInteger(selector.row) || (selector.row as number) < 1 || (selector.row as number) > 6
+      || !['nearest_house', 'farthest_house'].includes(selector.edge as string)) {
+      return { error: `第 ${index} 步 placement 只用于 launch，与 at 二选一，格式 {row,edge:"nearest_house"|"farthest_house"}` };
+    }
+    placement = { row: selector.row as number, edge: selector.edge as PvzLaunchPlacementSelector['edge'] };
+  }
   const card = value.card === undefined ? undefined : semanticText(value.card);
   if (value.card !== undefined && !card) {
     return { error: `第 ${index} 步 card 禁止 slot/数字，必须写当前快照中的语义卡名或 card key` };
@@ -396,6 +415,7 @@ function parseSpecial(value: Record<string, unknown>, index: number): { step: Pv
     step: {
       skill: 'special', action,
       ...(at ? { at } : {}),
+      ...(placement ? { placement } : {}),
       ...(to ? { to } : {}),
       ...(card ? { card } : {}),
       ...(action === 'whack' ? { targets: targets! } : target ? { target } : {}),

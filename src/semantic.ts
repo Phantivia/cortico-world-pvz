@@ -93,6 +93,7 @@ export type PvzSemanticTargetSelector =
 export interface PvzSemanticSpecialRequest {
   action: string;
   at?: PvzSemanticCell;
+  placement?: { row: number; edge: 'nearest_house' | 'farthest_house' };
   to?: PvzSemanticCell;
   card?: PvzSemanticCardSelector;
   target?: PvzSemanticTargetSelector;
@@ -380,6 +381,23 @@ export function resolveSemanticSpecialAction(
     return { kind: 'special', action };
   }
   if (contract.kind === 'at') {
+    if (action === 'launch' && input.placement !== undefined) {
+      exactKeys(input, ['action', 'placement'], action);
+      const placement = strictRecord(input.placement, 'launch.placement');
+      exactKeys(placement, ['row', 'edge'], 'launch.placement');
+      const row = placement.row;
+      if (!Number.isInteger(row) || (row as number) < 1 || (row as number) > board.rows
+        || !['nearest_house', 'farthest_house'].includes(placement.edge as string)) {
+        throw new PvzSemanticError('invalid_selector', 'launch.placement 必须是 {row,edge:"nearest_house"|"farthest_house"}，row 在当前棋盘内');
+      }
+      const columns = targets.filter(target => target.kind === 'cell' && target.row === row && target.column !== null)
+        .map(target => target.column!);
+      if (!columns.length) {
+        throw new PvzSemanticError('unavailable', `第${row}排当前没有手持种子包的可用落点`);
+      }
+      const column = placement.edge === 'nearest_house' ? Math.min(...columns) : Math.max(...columns);
+      return { kind: 'special', action, row: row as number, column };
+    }
     exactKeys(input, ['action', 'at'], action);
     const at = parseCell(input.at, board, 'at');
     requireCellTarget(targets, at, action);

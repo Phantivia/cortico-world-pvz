@@ -34,6 +34,17 @@ it('种子拾取植物名规范化并拒绝无关资源的植物选择器', () =
   expect(parsePvzDo([{ skill: 'collect', what: 'usable_seed', plant: 'unknown' }])).toHaveProperty('error');
 });
 
+it('launch 接受排内方向选择器并拒绝混用固定格或其他动作', () => {
+  const step = { skill: 'special', action: 'launch', placement: { row: 3, edge: 'farthest_house' } };
+  expect(parsed([step])).toEqual([step]);
+  for (const invalid of [
+    { ...step, at: { row: 3, column: 9 } },
+    { ...step, action: 'drop_brain' },
+    ...[0, 7, 1.5, '3'].map(row => ({ ...step, placement: { ...step.placement, row } })),
+    { ...step, placement: { row: 3, edge: 'any' } },
+  ]) expect(parsePvzDo([invalid])).toHaveProperty('error');
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;

@@ -219,6 +219,8 @@ Receipts, events, and snapshots name rows and columns the way a person would —
 
 Each model response may submit one `pvz_do` skill queue. Special actions other than `launch`, `bowling`, `buy_snorkel`, and `drop_brain` must end that queue, as must confirmed seed selection, award collection, interaction, and visual fallback. Their terminal receipt carries the fresh state used to plan the next queue. A usable seed pickup must end the queue or be followed immediately by `launch`. Multiple pickup/placement pairs can run in one queue; each placement is verified before the next pickup, and a failed placement stops the queue.
 
+`launch` accepts an exact `at:{row,column}` or `placement:{row,edge:"nearest_house"|"farthest_house"}`. The placement selector uses the held packet's current legal targets in the chosen row. It does not change rows when none are available; the receipt names the actual cell.
+
 ## Events and progression
 
 The 引擎子进程 projects lifecycle, screen, seed-picker, level start, visible progress, card readiness, close threats, mower use or loss, victory, defeat, award, and committed profile progress. Victory and defeat come from a persistent, monotonic run result rather than inference from the current screen; award and defeat screens are supporting evidence for the same result. The game-enforced unique visible player name scopes profile commits and mode-record baselines, so changing users cannot be reported as progress.
