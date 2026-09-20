@@ -157,7 +157,7 @@ Staleness is the reason these primitives exist: the interval between the module 
 | An emergency placement has waited beyond its useful window. | Give the trigger `expiresInMs`; expiry withdraws it. |
 | A different lane now needs the reserved card. | Submit the old task ID in `cancel` alongside the new steps with `queue:"append"`; admission can reuse the released card without disturbing other intent. |
 
-Zombie predicates optionally filter `immobilized:true` or `false` before counting matches. `hasUsableMower` tests each enemy's own row for a ready or triggered mower; squished mowers are unusable, and an absent mower stays unknown when the home-side cell is hidden. Combining unfrozen enemies in exposed lanes with boss and projectile predicates lets one bounded trigger cover the model's chosen situations. Freezing all matching enemies makes that branch false; a later thaw can rearm it.
+Zombie predicates optionally filter `immobilized:true` or `false` before counting matches. `hasUsableMower` tests each enemy's own row for a ready or triggered mower; squished mowers are unusable, and an absent mower stays unknown when the home-side cell is hidden. Combining unfrozen enemies in exposed lanes with boss and projectile predicates lets one bounded trigger cover the model's chosen situations. Immobilization describes the observed state, not susceptibility to freezing: ice machines and bouncing pogo zombies can keep this branch true after an Ice-shroom. The predicate must actually become false before another firing; separate triggers can keep unrelated conditions independent.
 
 These conditions specify one finite action; plant choice, lane choice, and repetition remain model decisions.
 
