@@ -61,7 +61,7 @@ One panel, `game`: start and stop, phase, process id and the last error detail. 
 
 ## Development
 
-`tsconfig.json` (`paths`) and `vitest.config.ts` (`resolve.alias`) point `cortico/*` at `../BOT/src/`, a framework checkout next to this directory; change both when it lives elsewhere.
+During development `cortico/*` resolves through the `cortico` devDependency (the framework package on npm). To develop against unreleased framework changes, run `pnpm link <framework checkout>` here; it writes an `overrides` entry into `pnpm-workspace.yaml`, so revert that before committing.
 
 ```bash
 corepack pnpm typecheck
