@@ -1624,7 +1624,7 @@ describe('PvzWorld 工具流程', () => {
 
       expect(failures).toEqual([failure]);
       expect(await callTool(world, 'pvz_observe')).toContain('尚未取得 PvZ 状态');
-      expect(world.console().badges?.find((badge) => badge.label === '画面')?.value)
+      expect(world.webUi().badges?.find((badge) => badge.label === '画面')?.value)
         .toBe('未连接');
     } finally {
       await world.stop();
@@ -2023,9 +2023,9 @@ describe('PvzWorld 窗口可操作性', () => {
 
     expect(host.events.map(({ event }) => event.text))
       .toContainEqual(expect.stringContaining('游戏窗口当前不可操作'));
-    const lamp = world.console().lamps?.find(({ label }) => label === '窗口');
+    const lamp = world.webUi().lamps?.find(({ label }) => label === '窗口');
     expect(lamp).toMatchObject({ state: 'error' });
-    expect(world.console().badges).toContainEqual(
+    expect(world.webUi().badges).toContainEqual(
       expect.objectContaining({ label: '窗口', value: '1200×900 出屏', tone: 'off' }),
     );
 

@@ -7,21 +7,21 @@
 This is an extension package for [Cortico](https://github.com/Pal-AI-Lab/Cortico), declared through the extension contract:
 
 ```jsonc
-"cortico": { "kind": "world", "api": 4, "consoleClient": "dist/console.js" }
+"cortico": { "kind": "world", "api": 6, "webUiClient": "dist/webui.js", "describe": "describe.json" }
 ```
 
-At runtime it imports the framework as `cortico/<path under src>` (`cortico/world.ts`, `cortico/core/types.ts`, `cortico/paths.ts`); the module hook registered by the framework's `src/extensions/runtime.ts` resolves those specifiers to the framework's own sources, so the extension and the framework share one instance. The package must therefore be `"type": "module"`. The browser side (`src/console/**`) only `import type`s from `cortico/*`.
+At runtime it imports the framework as `cortico/<path under src>` (`cortico/world.ts`, `cortico/core/types.ts`, `cortico/paths.ts`); the module hook registered by the framework's `src/extensions/runtime.ts` resolves those specifiers to the framework's own sources, so the extension and the framework share one instance. The package must therefore be `"type": "module"`. The browser side (`src/webui/**`) only `import type`s from `cortico/*`.
 
 ## Installation
 
-Build the console panel first; `dist/` is not tracked and the console shows an empty PvZ page without it:
+Build the WebUI panel first; `dist/` is not tracked and the WebUI shows an empty PvZ page without it:
 
 ```bash
 corepack pnpm install
 corepack pnpm build
 ```
 
-Then either install it from the console's extensions page with this directory's absolute path, or run `corepack pnpm add --ignore-workspace <absolute path>` inside `<Cortico>/extensions/`. Restart the whole Cortico process afterwards; World definitions are read at startup.
+Then either install it from the WebUI extensions page with this directory's absolute path, or run `corepack pnpm add --ignore-workspace <absolute path>` inside `<Cortico>/extensions/`. Restart the whole Cortico process afterwards; World definitions are read at startup.
 
 Windows only. The definition's `preflight` rejects activation on any other platform.
 
@@ -39,7 +39,7 @@ The managed pointer and its pixel companion live in [`cursor-companion/`](cursor
 
 ## Configuration
 
-`worlds.pvz` in the deployment's `config.json`; every key is also on the console's configuration page.
+`worlds.pvz` in the deployment's `config.json`; every key is also on the WebUI configuration page.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -55,7 +55,7 @@ The managed pointer and its pixel companion live in [`cursor-companion/`](cursor
 
 Ownership records (process id, creation time, owner token, artifact directory) are written under the deployment's data directory, `pvz/ownership/`, and are never logged.
 
-## Console
+## WebUI
 
 One panel, `game`: start and stop, phase, process id and the last error detail. Starting compiles the bridge if needed, hashes the game, launches it suspended, injects, restores the 800 × 600 client and reports `running` once the implant's hello arrives.
 
@@ -66,20 +66,20 @@ During development `cortico/*` resolves through the `cortico` devDependency (the
 ```bash
 corepack pnpm typecheck
 corepack pnpm test       # Native fixtures need the x86 MSVC toolchain
-corepack pnpm build      # esbuild → dist/console.js
+corepack pnpm build      # esbuild → dist/webui.js
 ```
 
 Tests never start the game. The native fixtures compile `implant.cpp` against fake memory laid out at the profile's offsets; see [`src/native/ADAPTING.md`](src/native/ADAPTING.md) §4.
 
 ## Process boundary
 
-The Core mounts `PvzWorldProxy` in the main process. The proxy stays idle until the operator starts the game from its console panel, then forks `engine-child.ts`. The 引擎子进程 owns the native named pipe, game launch, injection, 15 Hz observation, state differencing, semantic task queue, and receipt verification. The x86 implant reads coherent state and sends mouse messages only to the PvZ window.
+The Core mounts `PvzWorldProxy` in the main process. The proxy stays idle until the operator starts the game from its WebUI panel, then forks `engine-child.ts`. The 引擎子进程 owns the native named pipe, game launch, injection, 15 Hz observation, state differencing, semantic task queue, and receipt verification. The x86 implant reads coherent state and sends mouse messages only to the PvZ window.
 
 Commands and captures require both the implant hello and the injector's resumed process identity. Requests made while either is pending fail without sending input or disconnecting the pipe.
 
-The console panel owns both directions: `start` launches, `stop` shuts the 引擎子进程 down, closes the owned game, and releases the persistent lease. Automatic restarts cover exactly one failure — the 引擎子进程 died while the game is still alive — and re-attach through the lease without touching the game. If the owned process itself is gone, the module concludes the operator closed the game: it stops at `stopped`, recycles the lease, and never relaunches. Recovery attempts are capped (4 within a rolling 10 minutes) and the module reports when it gives up.
+The WebUI panel owns both directions: `start` launches, `stop` shuts the 引擎子进程 down, closes the owned game, and releases the persistent lease. Automatic restarts cover exactly one failure — the 引擎子进程 died while the game is still alive — and re-attach through the lease without touching the game. If the owned process itself is gone, the module concludes the operator closed the game: it stops at `stopped`, recycles the lease, and never relaunches. Recovery attempts are capped (4 within a rolling 10 minutes) and the module reports when it gives up.
 
-The main process receives events, deferred board summaries, console status, and requested PNG frames. Screenshot replies include the semantic state observed when capture returns, including current menu actions. They do not disclose raw memory, hidden entities, or high-frequency coordinates.
+The main process receives events, deferred board summaries, WebUI status, and requested PNG frames. Screenshot replies include the semantic state observed when capture returns, including current menu actions. They do not disclose raw memory, hidden entities, or high-frequency coordinates.
 
 The managed window is pinned to a Per-Monitor V2 client of exactly 800x600, wholly inside one monitor's visible bounds. Both facts ride on every snapshot as `presentation`. Repair runs inline on the window messages that can change geometry and, as the backstop, on every poll tick, so a repair that once failed does not leave the window clipped; it is suppressed while the window is minimized and while a person is dragging it. Drag suppression is held by the mouse button rather than by `WM_EXITSIZEMOVE` alone, so a move that never delivers that message cannot latch repair off for the rest of the session. Off that invariant the implant refuses screenshots and mouse messages — a window DC only reads pixels that are actually on screen — and the module refuses to queue work with the measured size in the receipt instead of letting each step fail without a reason.
 

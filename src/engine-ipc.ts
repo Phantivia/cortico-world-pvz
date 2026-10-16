@@ -1,7 +1,7 @@
 import type {
   EventEnvelope,
   EventTag,
-  WorldConsoleDecl,
+  WorldWebUiDecl,
   PushOptions,
   ToolCallContext,
   TriggerMode,
@@ -75,7 +75,7 @@ export type EngineNote =
     }
   | {
       kind: 'status';
-      decl: Pick<WorldConsoleDecl, 'lamps' | 'badges' | 'links'>;
+      decl: Pick<WorldWebUiDecl, 'lamps' | 'badges' | 'links'>;
     };
 
 export type HostRequest =

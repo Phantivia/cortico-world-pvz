@@ -5,7 +5,7 @@ import type {
   World,
   WorldHost,
   WorldPanelDecl,
-  WorldConsoleDecl,
+  WorldWebUiDecl,
   ToolCallContext,
   ToolDef,
   ToolOutcome,
@@ -180,7 +180,7 @@ type BoundConditionalPlantStep = Extract<PvzDoStep, { skill: 'plant' }> & {
 const BOARD_WAKE_INTERVAL_MS = 30_000;
 
 /**
- * 控制台面板的声明:局部 id + 真标题,渲染在 `src/console/` 的浏览器扩展里
+ * WebUI 面板的声明:局部 id + 真标题,渲染在 `src/webui/` 的浏览器扩展里
  * (键就是这里的 id)。代理与开发态截图器共用这一份——面板声明一旦两边不同,扩展
  * 那个键就只在其中一条路上对得上。
  */
@@ -263,7 +263,7 @@ export class PvzWorld implements World {
     return {};
   }
 
-  console(): WorldConsoleDecl {
+  webUi(): WorldWebUiDecl {
     const supported = this.latest?.executable.supported;
     const state = this.connected ? (supported ? 'online' : 'error') : this.starting ? 'loading' : 'offline';
     const presentation = this.latest?.presentation ?? null;

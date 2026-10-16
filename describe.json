@@ -1,0 +1,2111 @@
+{
+  "tools": [
+    {
+      "name": "pvz_observe",
+      "description": "读取当前界面、可见棋盘、卡片、资源、关卡进度和任务队列。事件已经带上快照时直接用事件里的那份。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read",
+        "snapshot"
+      ],
+      "summary": {
+        "zh": "读取当前界面、棋盘、卡片、阳光、关卡进度和任务队列。",
+        "en": "Reads the current screen, board, cards, sun, level progress and task queue."
+      }
+    },
+    {
+      "name": "pvz_do",
+      "description": "提交一份有序动作队列并返回任务号。每个响应最多调用一次。确认选卡、收取奖励、界面交互、画面点击与除放置种子包、砸花瓶、投掷坚果、水族馆购买僵尸和投喂以外的特殊动作会改变界面或阶段，这类步骤放在队尾，一份队列里只放一个。launch、break_vase、bowling、buy_snorkel、drop_brain 可以连续多步，每一步都核对当前资源和目标；种子包按 collect、launch 成对安排。连续砸罐只执行明确列出的目标，内容未知的罐子可能同时释放多个敌人。drop_brain 用 at 指定投喂格，每次花费5阳光，场上最多3个脑子。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "menu"
+                      ]
+                    },
+                    "action": {
+                      "type": "string",
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "profile_create"
+                      ]
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 12
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "choose_seeds"
+                      ]
+                    },
+                    "seeds": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 10,
+                      "uniqueItems": true,
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "plant": {
+                                "type": "string",
+                                "enum": [
+                                  "imitater"
+                                ]
+                              },
+                              "imitates": {
+                                "type": "string",
+                                "maxLength": 128
+                              }
+                            },
+                            "required": [
+                              "plant",
+                              "imitates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "replace",
+                        "toggle"
+                      ]
+                    },
+                    "confirm": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "seeds"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "plant"
+                      ]
+                    },
+                    "plant": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "plant": {
+                              "type": "string",
+                              "enum": [
+                                "imitater"
+                              ]
+                            },
+                            "imitates": {
+                              "type": "string",
+                              "maxLength": 128
+                            }
+                          },
+                          "required": [
+                            "plant",
+                            "imitates"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "row": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "bossProjectile": {
+                              "type": "string",
+                              "enum": [
+                                "iceball",
+                                "fireball"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "bossProjectile"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "emptyPot": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "emptyPot"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "排号，或执行时当前可见的指定冰火球所在排。球消失或类型不同则跳过本步。row 与 column 都写 {emptyPot:\"nearest_house\"} 可跨排选全棋盘最靠房子的可见空盆，同列取排号较小者；适用于寒冰菇等全场效果。没有空盆则跳过。"
+                    },
+                    "column": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "aheadOf": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_hostile"
+                              ]
+                            },
+                            "minGap": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 8
+                            }
+                          },
+                          "required": [
+                            "aheadOf",
+                            "minGap"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "emptyPot": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "emptyPot"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "{emptyPot:\"nearest_house\"} 在本步执行前选 row 范围内最靠房子的可见空花盆；没有就跳过，不补盆，回执给出实际落点。row 是排号时只选该排；row 同样是空盆选择器时跨排选择。相对列在真正输入时才锁目标、落子前再重算：minGap 是下限，从该排最近敌对僵尸脚下那格往屋方向数 minGap 格起，取第一个能下这株植物的格，0 即从它脚下那格起（它正在啃的那株所在格不能下，就落到前一格）。数到棋盘外夹在第 1 列；目标消失、这排没有能下的格或卡片没准备好时这一步跳过并返回原因，后面的步骤照做；不自动换目标或换排。"
+                    },
+                    "when": {
+                      "type": "string",
+                      "enum": [
+                        "now",
+                        "ready",
+                        "ready_and_affordable"
+                      ],
+                      "description": "缺省 now：卡片不足、没冷却好或阳光不够就跳过这一步，后面的步骤照做。传送带超额的即时种植在受理时标记跳过，不等未来卡片。ready 等待冷却；ready_and_affordable 还等待阳光。等待会保留卡片；队列走到这一步就停下等，后面的步骤在它种下之后才做。等待期间阳光照常由 World 自动收取。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "plant",
+                    "row",
+                    "column"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "shovel"
+                      ]
+                    },
+                    "row": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 6
+                    },
+                    "column": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "row",
+                    "column"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "collect"
+                      ]
+                    },
+                    "what": {
+                      "type": "string",
+                      "enum": [
+                        "coins",
+                        "resources",
+                        "award",
+                        "usable_seed"
+                      ],
+                      "description": "阳光不在其中：场上的阳光由 World 自动收取，resources 也不含阳光。"
+                    },
+                    "until": {
+                      "type": "string",
+                      "enum": [
+                        "once",
+                        "visible_clear"
+                      ],
+                      "description": "visible_clear 持续收集当前可见类别；usable_seed 只允许 once。可在队尾单独拾取，或紧跟 special action:launch 放置；多包已知种子可按 collect、launch 成对连续安排，每次放置验真后才拾取下一包。"
+                    },
+                    "plant": {
+                      "type": "string",
+                      "description": "仅 usable_seed 可用：指定要拾取的植物名称。省略则拾取任意一包；指定植物当前不可见时不拾取其他种类。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "what"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "special"
+                      ]
+                    },
+                    "action": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "使用状态中的特殊动作名，接受中文或规范英文。砸花瓶(break_vase)用 target:{kind:\"grid_item\",name:\"花瓶\",at:{row,column}}；放置种子包(launch)用 at:{row,column}。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。"
+                    },
+                    "at": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "placement": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "row": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 6
+                            },
+                            "edge": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house",
+                                "farthest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "row",
+                            "edge"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "row": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 6
+                            },
+                            "aheadOf": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_hostile"
+                              ]
+                            },
+                            "minGap": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 8
+                            }
+                          },
+                          "required": [
+                            "row",
+                            "aheadOf",
+                            "minGap"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "只用于 launch，与 at 二选一。edge 选指定排最靠近或最远离房子的当前可用格；aheadOf 按执行前的可见快照，从该排最近存活敌对僵尸所在格向屋方向数 minGap 格起，选第一个当前可放的格，起点最少为第1列。目标不存在或没有落点则受阻，不换排。回执给出实际格子。"
+                    },
+                    "to": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "card": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "状态中的卡片语义名。"
+                    },
+                    "target": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "zombie"
+                              ]
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": [
+                                "all_visible"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "scope"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "plant",
+                                "zombie",
+                                "grid_item",
+                                "collectible"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
+                            "at": {
+                              "type": "object",
+                              "properties": {
+                                "row": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 6
+                                },
+                                "column": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9
+                                }
+                              },
+                              "required": [
+                                "row",
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "targets": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 1,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "zombie"
+                            ]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "all_visible"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "锤击步骤使用一个 all_visible 选择器，执行时绑定最多 32 个当前可见目标。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "interact"
+                      ]
+                    },
+                    "target": {
+                      "type": "string",
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "visual_click"
+                      ],
+                      "description": "只用于没有语义菜单或对话框的未知界面；已识别的菜单和对话框走 menu。"
+                    },
+                    "x": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 799
+                    },
+                    "y": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 599
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "description": "按顺序执行；前一步受阻或未验真时后面的步骤停下。要等某个事实出现再做的事不写进队列，用 pvz_arm 武装触发器。"
+          },
+          "queue": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "append",
+              "now"
+            ],
+            "description": "replace 撤掉排队和等待中的任务，当前任务继续；append 保留现有任务并追加；now 中断当前任务并插到队首，其他排队和等待中的任务仍保留。清空整份旧计划用 pvz_stop。锤僵尸棋盘上 append 只用来响应预取提示。"
+          },
+          "cancel": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "同时撤掉这些任务的剩余意图。只改部分计划时配合 queue:\"append\"；参数或新计划准入失败时不撤旧任务。已结束的任务号无须撤销。"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "提交一串按顺序执行的动作(选卡、种植、点菜单等),任务结束时回执结果。",
+        "en": "Submits an ordered queue of actions such as picking seeds, planting or pressing menu items, with a receipt when the task ends."
+      }
+    },
+    {
+      "name": "pvz_queue",
+      "description": "读取当前任务、等待任务、卡片保留和最近结果。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read",
+        "snapshot"
+      ],
+      "summary": {
+        "zh": "查看正在执行和排队的任务、预留的卡片和最近的结果。",
+        "en": "Shows the running and waiting tasks, reserved cards and recent results."
+      }
+    },
+    {
+      "name": "pvz_arm",
+      "description": "武装一个触发器：条件成立那一刻把 steps 当一份队列提交。默认一次；maxFirings 指定有限重复次数，每次须先观察到条件为假，再次成真才打响。触发器独立于队列，不挡后面的任务。传送带默认预留全部次数的当前卡数；waitForCards:true 改为等可用余卡到达再打响，不提前占卡。关卡结束或换棋盘时自动撤掉。撤销用 pvz_stop({triggerId})。",
+      "parameters": {
+        "type": "object",
+        "$defs": {
+          "pvzCondition": {
+            "description": "可自由组合的可见事实条件，用 all/any/not 组合，最多 8 层、64 节点。条件成立那一刻由 World 替你落子，中间不再隔一轮观察和思考；未知保留为未知。",
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "boss"
+                ],
+                "properties": {
+                  "boss": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "僵王可见头部状态。vulnerable 为低头瞄准、吐球或恢复阶段；immobilized 为当前定身。",
+                    "properties": {
+                      "vulnerable": {
+                        "type": "boolean"
+                      },
+                      "immobilized": {
+                        "type": "boolean"
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "vulnerable"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "immobilized"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "bossProjectile"
+                ],
+                "properties": {
+                  "bossProjectile": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind"
+                    ],
+                    "description": "僵王已经吐出且画面中可见的冰火球；省略 row 匹配任意排。",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "fireball",
+                          "iceball"
+                        ]
+                      },
+                      "row": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 6
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sun"
+                ],
+                "properties": {
+                  "sun": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "min": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "max": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "min"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "max"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "card"
+                ],
+                "properties": {
+                  "card": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "plant"
+                    ],
+                    "description": "存在匹配卡片，同时满足指定的 ready/affordable；没有匹配卡片为 false。",
+                    "properties": {
+                      "plant": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "peashooter",
+                              "sunflower",
+                              "cherry_bomb",
+                              "wall_nut",
+                              "potato_mine",
+                              "snow_pea",
+                              "chomper",
+                              "repeater",
+                              "puff_shroom",
+                              "sun_shroom",
+                              "fume_shroom",
+                              "grave_buster",
+                              "hypno_shroom",
+                              "scaredy_shroom",
+                              "ice_shroom",
+                              "doom_shroom",
+                              "lily_pad",
+                              "squash",
+                              "threepeater",
+                              "tangle_kelp",
+                              "jalapeno",
+                              "spikeweed",
+                              "torchwood",
+                              "tall_nut",
+                              "sea_shroom",
+                              "plantern",
+                              "cactus",
+                              "blover",
+                              "split_pea",
+                              "starfruit",
+                              "pumpkin",
+                              "magnet_shroom",
+                              "cabbage_pult",
+                              "flower_pot",
+                              "kernel_pult",
+                              "coffee_bean",
+                              "garlic",
+                              "umbrella_leaf",
+                              "marigold",
+                              "melon_pult",
+                              "gatling_pea",
+                              "twin_sunflower",
+                              "gloom_shroom",
+                              "cattail",
+                              "winter_melon",
+                              "gold_magnet",
+                              "spikerock",
+                              "cob_cannon",
+                              "explod_o_nut",
+                              "giant_wall_nut",
+                              "sprout",
+                              "leftpeater"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "plant",
+                              "imitates"
+                            ],
+                            "properties": {
+                              "plant": {
+                                "type": "string",
+                                "enum": [
+                                  "imitater"
+                                ]
+                              },
+                              "imitates": {
+                                "type": "string",
+                                "enum": [
+                                  "peashooter",
+                                  "sunflower",
+                                  "cherry_bomb",
+                                  "wall_nut",
+                                  "potato_mine",
+                                  "snow_pea",
+                                  "chomper",
+                                  "repeater",
+                                  "puff_shroom",
+                                  "sun_shroom",
+                                  "fume_shroom",
+                                  "grave_buster",
+                                  "hypno_shroom",
+                                  "scaredy_shroom",
+                                  "ice_shroom",
+                                  "doom_shroom",
+                                  "lily_pad",
+                                  "squash",
+                                  "threepeater",
+                                  "tangle_kelp",
+                                  "jalapeno",
+                                  "spikeweed",
+                                  "torchwood",
+                                  "tall_nut",
+                                  "sea_shroom",
+                                  "plantern",
+                                  "cactus",
+                                  "blover",
+                                  "split_pea",
+                                  "starfruit",
+                                  "pumpkin",
+                                  "magnet_shroom",
+                                  "cabbage_pult",
+                                  "flower_pot",
+                                  "kernel_pult",
+                                  "coffee_bean",
+                                  "garlic",
+                                  "umbrella_leaf",
+                                  "marigold",
+                                  "melon_pult",
+                                  "gatling_pea",
+                                  "twin_sunflower",
+                                  "gloom_shroom",
+                                  "cattail",
+                                  "winter_melon",
+                                  "gold_magnet",
+                                  "spikerock",
+                                  "cob_cannon",
+                                  "explod_o_nut",
+                                  "giant_wall_nut",
+                                  "sprout",
+                                  "leftpeater"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "ready": {
+                        "type": "boolean"
+                      },
+                      "affordable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "ready"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "affordable"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "collectible"
+                ],
+                "properties": {
+                  "collectible": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "kind"
+                    ],
+                    "description": "可见掉落物达到 minCount（默认1），如 usable_seed 种子包。数量不足且有浓雾时为未知。",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+                      },
+                      "plant": {
+                        "type": "string",
+                        "description": "仅 usable_seed 可用：只统计指定植物名称的种子包。"
+                      },
+                      "minCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1024
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "cell"
+                ],
+                "properties": {
+                  "cell": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "row",
+                      "column",
+                      "layer",
+                      "empty"
+                    ],
+                    "description": "主层为空仍可有荷叶或花盆，它们在 base 层。",
+                    "properties": {
+                      "row": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 6
+                      },
+                      "column": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9
+                      },
+                      "layer": {
+                        "type": "string",
+                        "enum": [
+                          "main",
+                          "base",
+                          "pumpkin"
+                        ]
+                      },
+                      "empty": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "zombie"
+                ],
+                "properties": {
+                  "zombie": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "row"
+                    ],
+                    "description": "闭区间内可见存活且未被魅惑的僵尸数量达到 minCount(默认 1)。row 写多排时按这几排合计计数，够樱桃炸弹的 3×3 或整片一次性植物用。immobilized 可筛选已定身或未定身的目标。hasUsableMower 按每只僵尸所在排是否有待命或正在清路的清洁车筛选，压毁的不算；该排屋侧不可见且未看到车时为未知。列边界比的是 columnPosition，省略则覆盖整行；数量不足且区间内有隐藏格时为未知。",
+                    "properties": {
+                      "row": {
+                        "oneOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 6
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 6,
+                            "uniqueItems": true,
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 6
+                            }
+                          }
+                        ]
+                      },
+                      "minColumn": {
+                        "type": "number",
+                        "minimum": -2,
+                        "maximum": 11
+                      },
+                      "maxColumn": {
+                        "type": "number",
+                        "minimum": -2,
+                        "maximum": 11
+                      },
+                      "minCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 50
+                      },
+                      "immobilized": {
+                        "type": "boolean"
+                      },
+                      "hasUsableMower": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "all"
+                ],
+                "properties": {
+                  "all": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/pvzCondition"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "any"
+                ],
+                "properties": {
+                  "any": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/pvzCondition"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "not"
+                ],
+                "properties": {
+                  "not": {
+                    "$ref": "#/$defs/pvzCondition"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "properties": {
+          "when": {
+            "$ref": "#/$defs/pvzCondition",
+            "description": "打响条件；每份新快照重判，只有真才打响。"
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "menu"
+                      ]
+                    },
+                    "action": {
+                      "type": "string",
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "profile_create"
+                      ]
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 12
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "choose_seeds"
+                      ]
+                    },
+                    "seeds": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 10,
+                      "uniqueItems": true,
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "plant": {
+                                "type": "string",
+                                "enum": [
+                                  "imitater"
+                                ]
+                              },
+                              "imitates": {
+                                "type": "string",
+                                "maxLength": 128
+                              }
+                            },
+                            "required": [
+                              "plant",
+                              "imitates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "replace",
+                        "toggle"
+                      ]
+                    },
+                    "confirm": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "seeds"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "plant"
+                      ]
+                    },
+                    "plant": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "plant": {
+                              "type": "string",
+                              "enum": [
+                                "imitater"
+                              ]
+                            },
+                            "imitates": {
+                              "type": "string",
+                              "maxLength": 128
+                            }
+                          },
+                          "required": [
+                            "plant",
+                            "imitates"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "row": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "bossProjectile": {
+                              "type": "string",
+                              "enum": [
+                                "iceball",
+                                "fireball"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "bossProjectile"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "emptyPot": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "emptyPot"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "排号，或执行时当前可见的指定冰火球所在排。球消失或类型不同则跳过本步。row 与 column 都写 {emptyPot:\"nearest_house\"} 可跨排选全棋盘最靠房子的可见空盆，同列取排号较小者；适用于寒冰菇等全场效果。没有空盆则跳过。"
+                    },
+                    "column": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "aheadOf": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_hostile"
+                              ]
+                            },
+                            "minGap": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 8
+                            }
+                          },
+                          "required": [
+                            "aheadOf",
+                            "minGap"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "emptyPot": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "emptyPot"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "{emptyPot:\"nearest_house\"} 在本步执行前选 row 范围内最靠房子的可见空花盆；没有就跳过，不补盆，回执给出实际落点。row 是排号时只选该排；row 同样是空盆选择器时跨排选择。相对列在真正输入时才锁目标、落子前再重算：minGap 是下限，从该排最近敌对僵尸脚下那格往屋方向数 minGap 格起，取第一个能下这株植物的格，0 即从它脚下那格起（它正在啃的那株所在格不能下，就落到前一格）。数到棋盘外夹在第 1 列；目标消失、这排没有能下的格或卡片没准备好时这一步跳过并返回原因，后面的步骤照做；不自动换目标或换排。"
+                    },
+                    "when": {
+                      "type": "string",
+                      "enum": [
+                        "now",
+                        "ready",
+                        "ready_and_affordable"
+                      ],
+                      "description": "缺省 now：卡片不足、没冷却好或阳光不够就跳过这一步，后面的步骤照做。传送带超额的即时种植在受理时标记跳过，不等未来卡片。ready 等待冷却；ready_and_affordable 还等待阳光。等待会保留卡片；队列走到这一步就停下等，后面的步骤在它种下之后才做。等待期间阳光照常由 World 自动收取。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "plant",
+                    "row",
+                    "column"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "shovel"
+                      ]
+                    },
+                    "row": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 6
+                    },
+                    "column": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "row",
+                    "column"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "collect"
+                      ]
+                    },
+                    "what": {
+                      "type": "string",
+                      "enum": [
+                        "coins",
+                        "resources",
+                        "award",
+                        "usable_seed"
+                      ],
+                      "description": "阳光不在其中：场上的阳光由 World 自动收取，resources 也不含阳光。"
+                    },
+                    "until": {
+                      "type": "string",
+                      "enum": [
+                        "once",
+                        "visible_clear"
+                      ],
+                      "description": "visible_clear 持续收集当前可见类别；usable_seed 只允许 once。可在队尾单独拾取，或紧跟 special action:launch 放置；多包已知种子可按 collect、launch 成对连续安排，每次放置验真后才拾取下一包。"
+                    },
+                    "plant": {
+                      "type": "string",
+                      "description": "仅 usable_seed 可用：指定要拾取的植物名称。省略则拾取任意一包；指定植物当前不可见时不拾取其他种类。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "what"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "special"
+                      ]
+                    },
+                    "action": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "使用状态中的特殊动作名，接受中文或规范英文。砸花瓶(break_vase)用 target:{kind:\"grid_item\",name:\"花瓶\",at:{row,column}}；放置种子包(launch)用 at:{row,column}。交换(swap)用 at/to 指定相邻格；旋转(twist)用 at 指定完整2×2区域的左上格，顺时针旋转；只有形成三连的移动会结算。购买升级(beghouled_buy)用 card 指定状态中的升级卡名。"
+                    },
+                    "at": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "placement": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "row": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 6
+                            },
+                            "edge": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_house",
+                                "farthest_house"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "row",
+                            "edge"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "row": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 6
+                            },
+                            "aheadOf": {
+                              "type": "string",
+                              "enum": [
+                                "nearest_hostile"
+                              ]
+                            },
+                            "minGap": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 8
+                            }
+                          },
+                          "required": [
+                            "row",
+                            "aheadOf",
+                            "minGap"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "只用于 launch，与 at 二选一。edge 选指定排最靠近或最远离房子的当前可用格；aheadOf 按执行前的可见快照，从该排最近存活敌对僵尸所在格向屋方向数 minGap 格起，选第一个当前可放的格，起点最少为第1列。目标不存在或没有落点则受阻，不换排。回执给出实际格子。"
+                    },
+                    "to": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 6
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "column"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "card": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "description": "状态中的卡片语义名。"
+                    },
+                    "target": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "zombie"
+                              ]
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": [
+                                "all_visible"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "scope"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "plant",
+                                "zombie",
+                                "grid_item",
+                                "collectible"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
+                            "at": {
+                              "type": "object",
+                              "properties": {
+                                "row": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 6
+                                },
+                                "column": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9
+                                }
+                              },
+                              "required": [
+                                "row",
+                                "column"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "targets": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 1,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "zombie"
+                            ]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "all_visible"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "scope"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "锤击步骤使用一个 all_visible 选择器，执行时绑定最多 32 个当前可见目标。"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "interact"
+                      ]
+                    },
+                    "target": {
+                      "type": "string",
+                      "maxLength": 128
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "visual_click"
+                      ],
+                      "description": "只用于没有语义菜单或对话框的未知界面；已识别的菜单和对话框走 menu。"
+                    },
+                    "x": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 799
+                    },
+                    "y": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 599
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "description": "打响时提交的队列，写法同 pvz_do。"
+          },
+          "queue": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "append",
+              "now"
+            ],
+            "description": "打响时的入队方式，缺省 now：中断当前任务插到队首，其他排队的保留。"
+          },
+          "expiresInMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 600000,
+            "description": "有效期（毫秒），从武装起算；到期撤掉剩余次数。缺省到本关结束。"
+          },
+          "maxFirings": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16,
+            "description": "最多触发次数，缺省1。连续为真只触发一次；后续须条件先为假再为真。动作失败也用掉本次次数。"
+          },
+          "waitForCards": {
+            "type": "boolean",
+            "description": "缺省false：传送带在武装时预留全部次数的当前卡。true仅用于传送带、只收when:now的种植步骤：条件为真且这一份步骤的卡已就绪、未被其他任务占用时才提交；缺卡继续等，不消耗次数，也不阻塞队列。可等待未来到达的卡，次数与当前张数无关。落点仍在执行时检查。"
+          }
+        },
+        "required": [
+          "when",
+          "steps"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "设一个棋盘条件触发器,条件成立时自动提交一串动作。",
+        "en": "Arms a trigger that submits a queue of actions when a board condition becomes true."
+      }
+    },
+    {
+      "name": "pvz_stop",
+      "description": "传 taskId 只撤掉该任务剩余意图；传 triggerId 撤掉一个触发器；都省略则停止并清空所有任务与触发器。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "triggerId": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "撤掉一个任务或触发器,或清空全部任务与触发器。",
+        "en": "Cancels one task or trigger, or clears every task and trigger."
+      }
+    },
+    {
+      "name": "pvz_glance",
+      "description": "截取游戏窗口，用于未知界面和兼容性诊断。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": {
+        "zh": "截取游戏窗口画面;模型能看图时才提供。",
+        "en": "Takes a screenshot of the game window; offered only when the model accepts images."
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "pvz.lifecycle",
+      "description": {
+        "zh": "操作员启动或停止游戏、游戏进程退出、引擎子进程崩溃,以及自动恢复的结果。",
+        "en": "The operator started or stopped the game, the game process exited, or the engine child process crashed, and whether recovery worked."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "pvz.connected",
+      "description": {
+        "zh": "连上游戏,附当前画面摘要。",
+        "en": "Connected to the game, with a summary of the current screen."
+      }
+    },
+    {
+      "type": "pvz.window.changed",
+      "description": {
+        "zh": "游戏窗口变得不能截图或点击(尺寸不对、跨出屏幕),或已恢复。",
+        "en": "The game window stopped accepting screenshots and clicks (wrong size, off screen), or recovered."
+      }
+    },
+    {
+      "type": "pvz.screen.changed",
+      "description": {
+        "zh": "游戏画面切换,如菜单到图鉴,或对话框关闭回到关卡。",
+        "en": "The game switched screens, such as from a menu to the almanac, or a dialog over the level closed."
+      }
+    },
+    {
+      "type": "pvz.seed_picker.opened",
+      "description": {
+        "zh": "进入选卡画面,附可选卡片。",
+        "en": "The seed picker opened, with the available cards."
+      }
+    },
+    {
+      "type": "pvz.level.started",
+      "description": {
+        "zh": "进入一个关卡,附棋盘摘要。",
+        "en": "A level started, with a board summary."
+      }
+    },
+    {
+      "type": "pvz.level.restarted",
+      "description": {
+        "zh": "同一画面上开始了新的一局。",
+        "en": "A new run of the level began on the same screen."
+      }
+    },
+    {
+      "type": "pvz.level.stage_resumed",
+      "description": {
+        "zh": "生存模式阶段间换卡完成,回到同一关继续。",
+        "en": "Survival mode finished picking seeds between stages and resumed the same level."
+      }
+    },
+    {
+      "type": "pvz.level.stage_completed",
+      "description": {
+        "zh": "分阶段的关卡(生存、砸罐子、我是僵尸、Last Stand)进入下一阶段。",
+        "en": "A staged level (Survival, Vasebreaker, I, Zombie, Last Stand) moved on to its next stage."
+      }
+    },
+    {
+      "type": "pvz.level.progress",
+      "description": {
+        "zh": "关卡进度变化,如波次或完成数。",
+        "en": "Level progress changed, such as the wave or the completed count."
+      }
+    },
+    {
+      "type": "pvz.level.won",
+      "description": {
+        "zh": "关卡胜利。",
+        "en": "The level was won."
+      }
+    },
+    {
+      "type": "pvz.level.lost",
+      "description": {
+        "zh": "关卡失败。",
+        "en": "The level was lost."
+      }
+    },
+    {
+      "type": "pvz.menu.ready",
+      "description": {
+        "zh": "当前画面出现新的可点操作。",
+        "en": "New actions became available on the current screen."
+      }
+    },
+    {
+      "type": "pvz.mode.progress",
+      "description": {
+        "zh": "模式选择画面上某个模式完成或刷新了纪录。",
+        "en": "A mode on the mode selector was completed or got a new record."
+      }
+    },
+    {
+      "type": "pvz.progress.committed",
+      "description": {
+        "zh": "存档进度已写入:冒险关数与各模式解锁情况。",
+        "en": "Profile progress was saved: the Adventure level and which modes are unlocked."
+      }
+    },
+    {
+      "type": "pvz.visibility.changed",
+      "description": {
+        "zh": "棋盘进入或离开看不见僵尸和植物的黑暗阶段。",
+        "en": "The board entered or left a dark phase in which zombies and plants are hidden."
+      }
+    },
+    {
+      "type": "pvz.zombie.visible",
+      "description": {
+        "zh": "有新的僵尸出现在画面上。",
+        "en": "New zombies came into view."
+      }
+    },
+    {
+      "type": "pvz.threat.approaching",
+      "description": {
+        "zh": "可见的僵尸进入更靠近房子的区段。",
+        "en": "Visible zombies moved into a band closer to the house."
+      }
+    },
+    {
+      "type": "pvz.threat.close",
+      "description": {
+        "zh": "僵尸走到草坪最左段,附这一排割草机是否还在。",
+        "en": "Zombies reached the leftmost part of the lawn, with whether that row still has a lawn mower."
+      }
+    },
+    {
+      "type": "pvz.zombie.relocated",
+      "description": {
+        "zh": "传送门关卡里僵尸被传到别的排。",
+        "en": "A zombie was moved to another row through a portal."
+      }
+    },
+    {
+      "type": "pvz.zombie.hunger",
+      "description": {
+        "zh": "僵尸水族馆里潜水僵尸饿了或恢复正常。",
+        "en": "A Snorkel Zombie in Zombiquarium became hungry or recovered."
+      }
+    },
+    {
+      "type": "pvz.boss.phase",
+      "description": {
+        "zh": "僵王博士换了动作阶段。",
+        "en": "Dr. Zomboss entered a new attack phase."
+      }
+    },
+    {
+      "type": "pvz.boss.immobilized",
+      "description": {
+        "zh": "僵王博士被定住或解除定身。",
+        "en": "Dr. Zomboss was frozen in place or freed."
+      }
+    },
+    {
+      "type": "pvz.boss.projectile",
+      "description": {
+        "zh": "僵王博士放出火球或冰球,或球已消失。",
+        "en": "Dr. Zomboss launched a fireball or iceball, or the ball is gone."
+      }
+    },
+    {
+      "type": "pvz.terrain.ice",
+      "description": {
+        "zh": "某一排的冰道变化或被清除,冰道上不能种植。",
+        "en": "A row's ice trail changed or was cleared; nothing can be planted on it."
+      }
+    },
+    {
+      "type": "pvz.portals.changed",
+      "description": {
+        "zh": "传送门关卡里传送门的位置变化。",
+        "en": "Portals moved in Portal Combat."
+      }
+    },
+    {
+      "type": "pvz.vase.changed",
+      "description": {
+        "zh": "砸罐子关卡里罐子露出的内容变化。",
+        "en": "What a vase reveals about its contents changed in Vasebreaker."
+      }
+    },
+    {
+      "type": "pvz.collectible.appeared",
+      "description": {
+        "zh": "出现可拾取的东西,如金币、钻石、种子包或奖杯;阳光由 World 自动收,不报。",
+        "en": "Something to pick up appeared, such as coins, diamonds, seed packets or the trophy; sun is collected by the World and not reported."
+      }
+    },
+    {
+      "type": "pvz.sun.stuck",
+      "description": {
+        "zh": "自动收阳光连续几次没收到。",
+        "en": "Automatic sun collection missed several times in a row."
+      },
+      "trigger": "debounce"
+    },
+    {
+      "type": "pvz.card.ready",
+      "description": {
+        "zh": "卡片冷却完毕且阳光够用,或传送带送来新卡。",
+        "en": "A card finished cooling down and is affordable, or the conveyor belt delivered a new card."
+      }
+    },
+    {
+      "type": "pvz.cursor.changed",
+      "description": {
+        "zh": "手上拿起或放下了种子包。",
+        "en": "A seed packet was picked up onto or dropped from the cursor."
+      }
+    },
+    {
+      "type": "pvz.actions.changed",
+      "description": {
+        "zh": "特殊关卡的阶段、可用动作或目标数变化。",
+        "en": "A special level's phase, allowed actions or target count changed."
+      }
+    },
+    {
+      "type": "pvz.target.ready",
+      "description": {
+        "zh": "锤僵尸关卡里出现新的可锤目标。",
+        "en": "New targets appeared in Whack a Zombie."
+      }
+    },
+    {
+      "type": "pvz.mower.used",
+      "description": {
+        "zh": "某一排的割草机或同类防线被触发。",
+        "en": "A row's lawn mower or its pool or roof counterpart went off."
+      }
+    },
+    {
+      "type": "pvz.mower.lost",
+      "description": {
+        "zh": "某一排的割草机被压毁或不见了。",
+        "en": "A row's lawn mower was crushed or disappeared."
+      }
+    },
+    {
+      "type": "pvz.plant.damaged",
+      "description": {
+        "zh": "植物受损程度加重。",
+        "en": "Plants took more damage."
+      }
+    },
+    {
+      "type": "pvz.plant.lost",
+      "description": {
+        "zh": "可见的植物离场。",
+        "en": "Visible plants left the board."
+      }
+    },
+    {
+      "type": "pvz.plant.layers_changed",
+      "description": {
+        "zh": "一格上叠着的植物(花盆、南瓜头等)变化。",
+        "en": "The plants stacked on a tile, such as a flower pot or pumpkin, changed."
+      }
+    },
+    {
+      "type": "pvz.task",
+      "description": {
+        "zh": "pvz_do 任务结束的回执:完成、部分完成、受阻、未验真或被撤销。",
+        "en": "The receipt of a pvz_do task: done, partly done, blocked, unverified or cancelled."
+      }
+    },
+    {
+      "type": "pvz.trigger",
+      "description": {
+        "zh": "pvz_arm 设的触发器打响、过期、因换关失效或被撤销。",
+        "en": "A pvz_arm trigger fired, expired, lapsed with the level, or was cancelled."
+      }
+    },
+    {
+      "type": "pvz.task.prefetch",
+      "description": {
+        "zh": "锤僵尸关卡里当前锤击队列快执行完,提示接着排下一份。",
+        "en": "In Whack a Zombie, the current whack queue is about to run out; a prompt to queue the next one."
+      },
+      "trigger": "flush"
+    },
+    {
+      "type": "pvz.board.snapshot",
+      "description": {
+        "zh": "棋盘摘要,随下一批事件送达;对局中棋盘有变化时,最多每 30 秒以它唤醒一次。",
+        "en": "A board summary sent with the next batch; during a level it wakes the bot at most every 30 seconds while the board changes."
+      },
+      "tags": [
+        "snapshot"
+      ]
+    }
+  ],
+  "prompts": [
+    {
+      "key": "worlds.pvz.envPrompt",
+      "title": "植物大战僵尸 · 环境提示词",
+      "role": "envPrompt",
+      "content": "你通过 pvz World 操作《植物大战僵尸》。状态由植入件从游戏内存读出，按语义名给出；雾里、黑暗里和屏幕外的东西不进状态。关卡进度只有进度条上的旗，报的是已过几面。\n\n坐标从 1 开始：第 1 排在最上方，第 1 列最靠近房子，僵尸朝列号更小的方向走。棋盘逐格写出，格前数字是列号：「空」可直接下植物；「水」要先放承载物；「空」加承载物名是已垫好、可直接下植物的格；「植物（承载物上）」是承载物已被占用。僵尸跟在它脚下那格后面用「←」连着，列位置带一位小数。完好且生效中的植物只写名字，准备、睡眠、受损才写进格子；僵尸同理。卡片「可用」只说冷却和阳光允许，落点仍须满足地格条件。植物和僵尸的机制看选卡界面与卡槽旁的提示，以及僵尸状态里的动作描述。\n\n事件记录发生那一刻的事实，一批事件末尾的棋盘与队列是投递时重读的现状。已受理只表示排上了队，成没成看 `pvz.task` 的终态。\n\n**延迟与落点。** 从快照投递到 `pvz_do` 落地有响应延迟，期间僵尸继续移动、地面种子继续计时。僵尸的速度写在状态里，不能把快照位置当作执行时的位置。落点取决于僵尸位置的植物（一次性爆发、陷阱、挡在前面的阻挡物）用相对列 `column:{aheadOf:\"nearest_hostile\",minGap:N}`：从它脚下那格往屋方向数 N 格起，取第一个能下的格，数到棋盘外夹在第 1 列，它正在啃的那株所在格不能下就落到前一格。生产位、后排防线、承载物用绝对列。种植步的 `when` 缺省 `now`：卡片没冷却好或阳光不够就跳过这一步，后面照做；要等卡片就写 `ready_and_affordable`。\n\n**队列。** 一份队列按顺序执行，前一步在等阳光或冷却时后面全部等着，队列仍在。提交前先口算：把这份队列每株的价格加起来，总额不超过手里的阳光加一轮生产植物的产出；超出的下一轮再排。便宜且此刻能种的排前面，等卡的排后面。World 自己收阳光，队列行写「正在收阳光」时你的任务排在它后面，几秒就轮到。受理回执的「落点现状」列出这份队列里已经有东西、或者还没垫承载物的格，下一份按它改。已排好的队列只在计划变了时才动，用 `cancel` 撤那一份或 `append` 追加；`queue:\"now\"` 只留给必须插队的救急一步。「某个事实出现时再做」的事用 `pvz_arm({when, steps})` 武装触发器：条件在每份新快照上重判，成真时提交 steps，缺省一次。`maxFirings` 可指定1–16次，每次须条件先为假再为真；连续为真不会连发。它不挡队列，关卡结束自动撤掉，传送带默认按全部剩余次数预留现有卡，waitForCards:true 则等可用余卡到达。一次性植物等僵尸进射程、某排出现僵尸再补防线，都可以预先安排。任务正在执行或等待、触发器已武装、当前没有新动作时结束本轮，等下一批事件。\n\n**闭包原则。** 对外说话的唯一事实是你正在实时玩这个游戏。禁止暴露触发器、队列、任务号、回执这些内部说法。排好的队列说「我接下来要种什么」，武装的触发器说「我盯着这一排，它进来我就丢」，等阳光说「攒够了就种」，一步没做成说「手滑了」「看错了」。意外归结为卡了一下、走神。禁止说任务、步骤、受阻、未验真、触发器。\n\n**普通波次防守。** 先处理已经在场的僵尸所在的排，没有僵尸的排不预防；有生产卡时，开局前两波先铺生产植物，每排一到两棵；阻挡物放在射手前一格、僵尸前两三格，让射手有时间；一次性植物等僵尸进射程再下，范围杀伤留给成堆或高血量的；被啃的植物先用阻挡物顶住再补射手；割草机是最后一道，被触发的排优先重建；水路先垫承载物再放射手；只在特定动作阶段才能被打中的僵尸，看它状态里的动作描述再出手。\n\n玩家选择框把每个档案列成 `profile:<实际名称>`：先用 `menu` 的 `action` 原样选中那一行，再 `menu action:\"confirm\"` 才切换。进入选卡界面后按关卡和敌人预告选卡并确认。传送带和保龄球关卡的卡片从带子上来，用掉一张剩下的往前挪一位：一类卡能排几步就看带子上此刻有几张同类的，在途队列与已武装的触发器一起算。同类之间没有分别，卡名写不带  次序的那个就行，落点由每一步自己给；投掷坚果可以一份队列里连着丢几颗。种星星关卡用普通种植把目标植物放到剩余目标格；锤僵尸棋盘每次交一份恰好 6 个锤击步骤的队列，拾取、种植和铲除另开队列。\n\n传送带的「就绪」只表示卡片自身可用；「传送带预算」已扣除队列和触发器剩余次数，只能按「可新排」张数新增安排。救急需要已安排的卡时，先撤销占用它的任务或触发器，再按新预算安排。\n\n传送门之战的同形传送门互相连通，僵尸与直线弹道可以穿过；右边界传送门在第 9 列外侧，没有可种植的地格。状态列出每一对的位置，传送门换位和可见僵尸跨排移动会产生事件。\n\n砸罐子的绿色植物罐只保证有植物，僵尸标记只保证有僵尸，未标记的罐子内容未知；只有实际透视时才会写出具体内容。开局先取绿色罐的植物，即使绿色罐靠屋，也比远处的未知罐安全。用已有植物建立防线后，优先在能接住敌人的排继续取罐。未知罐越靠房子，开出僵尸后留给射手的时间越短；有条件时从远处开始，逐排控制开罐量，先处理当前铁桶等高血量敌人再增加压力。单株普通射手不足以在短距离内打掉完整铁桶，窝瓜等一次性植物要兼顾这些敌人。砸罐写 `special action:\"break_vase\",target:{kind:\"grid_item\",name:\"花瓶\",at:{row,column}}`。可以在一份队列里连续砸多个明确指定的罐子，逐步验真，失败即停；这样能缩短找植物时的调用间隔，也可能同时放出多只敌人。开罐数量由你按现有防线和当前威胁决定，随后根据实际掉落安排植物。\n\n未打开的罐子不会自行放出敌人，可以等当前威胁被处理后再开新排；开罐前按现有射手的方向和位置检查该格是否受火力覆盖，仅有阻挡物仍会被啃穿。需要开罐找支援时，要把现有植物投到已经在场的威胁上，避免一次性植物闲置在无敌人的排。左向豌豆射手只打本排列号更小的敌人，要放在僵尸右侧的空格；右端还有罐子时，可以用刚砸开的较右空格，放到屋侧不能拦住从右边走来的僵尸。已经种好的左向射手覆盖其左侧罐子，右侧罐子开出的僵尸会先遇到射手且不受它攻击；“从远处开始”不能替代射程判断。坚果挡在僵尸与房子之间，让右侧的左向射手从背后输出。三线射手朝列号增大的方向攻击本排和相邻排。舞王会在附近和相邻排召唤伴舞，靠屋的伴舞可能先于舞王突破；魅惑菇只有被吃才生效。\n\n砸罐掉出的种子包落地后约15秒消失，手持期间不会消失。拿起一包用 `collect what:\"usable_seed\"`，可按 `plant` 选种类，再用 `special action:\"launch\",at:{row,column}` 放到选定格。为避免一轮思考期间丢失种子，可在同一队列砸一个选定罐子后紧跟 `collect what:\"usable_seed\"`，先拿起实际掉落，再看手持种类决定落点；没有掉落时收集是空操作。也可用 `placement:{row,edge:\"nearest_house\"|\"farthest_house\"}` 代替 at，在所选排执行时选最靠近或最远离房子的当前可用落点，避开仍被罐子等占据的格；没有落点就受阻，不换排。多包可见种子可以把 collect、launch 成对排进同一份队列；每次落地验真后才会拾取下一包，放置失败会停队。拿起种子后先放置或取消，再拿下一包。路灯透视发生变化时会更新罐子信息。\n\n种子包可以跨排使用，不必放回开出它的那一排。分配新植物前检查仍有敌人或未开罐的排：高坚果只能争取时间，仍须有能命中墙前敌人的伤害。已经清空罐子和敌人的排无需继续增加火力；新增射手优先补仍有威胁的缺口。左向射手位于坚果右侧可以攻击啃食者，位于坚果左侧则不能命中它们。\n\n种子包救急的 `launch` 也可用 `placement:{row,aheadOf:\"nearest_hostile\",minGap:1}`：按执行前可见快照，从指定排最近存活敌对僵尸所在格往屋方向数 minGap 格起，找第一个当前可放的格，起点最少为第1列；没有可见敌人或落点则受阻。用于窝瓜等需要靠近敌人的种子包时，可避免仍按较早的快照写死落点。植物种类、排和间隔由你选择。\n\n小丑爆炸会破坏附近植物，并打开周围一圈罐子，可能继续引发爆炸和多排突进。开罐前可预先安排种子包救急，例如 `pvz_arm({when:{all:[{collectible:{kind:\"usable_seed\",plant:\"squash\"}},{zombie:{row:2,maxColumn:4}}]},steps:[{skill:\"collect\",what:\"usable_seed\",plant:\"squash\"},{skill:\"special\",action:\"launch\",placement:{row:2,aheadOf:\"nearest_hostile\",minGap:1}}],queue:\"append\",maxFirings:8})`。这会在可见窝瓜包和该排近敌同时出现时，按声明的步骤拿起并放置；选择哪些排、列界限和次数由你按防线决定。\n\n防线也可提前安排：把命名种子包出现与选定格 `cell:{row,column,layer:\"main\",empty:true}` 合成条件，步骤用命名 collect 和该格 launch，种子掉出后就按你的计划部署。高坚果会截住跳跳僵尸，使后排植物有时间攻击；可用这种预设补充已空缺的防线，避免整批种子在下一轮思考时过期。种子包不预留，多个预设可能争用同一包；命名拾取会复用手持的同种包，遇到其他种类则停止。并行保留的预设用 queue:\"append\"；queue:\"now\" 会取消正在执行的任务，包括尚未完成的拾取和放置，只有确实需要抢占时才用。缺包或放置失败看回执后调整。\n\n地刺持续伤害与它接触的地面僵尸，自己不拦路；走过一株地刺不保证被消灭。坚果与地刺要在同排配合：在敌人到达前，坚果放靠屋一侧，地刺紧贴它右边，可让僵尸啃坚果时留在地刺伤害范围内。先把已有植物集中成一排有持续伤害的防线，再在它覆盖的范围取罐；得到多余支援后再扩展到其他排。每排只有一株地刺或坚果时，多排一起放敌人容易来不及补齐。观察地刺的攻击状态与敌人的本体、护甲损伤，判断是否已有持续伤害；坚果单独只能拖延。窝瓜可处理尚未形成这种配合的排或高血量敌人，开新罐前仍要检查现有威胁。\n\n冰道格不能种植，火爆辣椒要放在同排无冰的可种植格；爆炸后清除整排冰道，地格与冰道变化事件随之更新。\n\n僵王跨在棋盘右侧，不占普通僵尸的行列格。低头瞄准、吐球、头部恢复时可受伤，抬头时不能受伤；五排投手都能攻击低下的头部，但会优先打本排更靠近房子的敌人。火爆辣椒同时伤害本排敌人与可受伤的头部。寒冰菇作用于全场，冻结低下的头部可延长输出时间；辣椒会解除命中者的冰冻。夜间屋顶的寒冰菇直接生效，无需咖啡豆。提前武装 `when:{boss:{vulnerable:true,immobilized:false}}` 种一张寒冰菇，可在低头解冻后续冰。传送带上可配 `waitForCards:true`，`maxFirings` 按想持续反应的次数填写，可超过现在的卡数；剩余次数用完时再安排。跨排空盆选择可避开已毁的盆，全场无空盆时需要先补盆。\n\n火球用寒冰菇消除，冰球用同排火爆辣椒消除。提前反制冰球可用 `pvz_arm`，条件 `when:{bossProjectile:{kind:\"iceball\"}}`，种辣椒的落点写 `row:{bossProjectile:\"iceball\"},column:{emptyPot:\"nearest_house\"}`，执行时才按可见冰球选排；尚未吐出的球没有类型或目标排。寒冰菇的触发条件可用 `any` 合并低头解冻与 `bossProjectile:{kind:\"fireball\"}`，共用指定次数的卡数预算。寒冰菇作用于全场，落点可写 `row:{emptyPot:\"nearest_house\"},column:{emptyPot:\"nearest_house\"}`，每次执行前跨排选择最靠房子的可见空盆；只有全场都没有空盆时才跳过。每份状态列出此刻的空花盆落点，冰菇和辣椒都要用空盆，投手上不能叠种。屋顶种投手、冰菇、辣椒时，选好 row 后用 `column:{emptyPot:\"nearest_house\"}`，本步执行前会在该排选最靠房子的可见空盆，回执给出实际落点；该排没空盆就跳过，须先用绝对列补盆。辣椒只清它所在排，不需要靠近敌人。跨排空盆选择只找空盆，不按僵尸位置选排；用辣椒清杂时明确指定敌人所在排，反制冰球用球所在排。僵王战没有生产卡，传送带植物免费；余卡越多来卡越慢，满带停止添卡。卡片按种类列出实际张数，计划只计当前可用的卡，`when:\"ready\"` 不会预订还没到的传送带卡。\n\n僵王战的投手持续伤害依赖数量，五排都要尽早铺投手；每排留一个空盆给辣椒，额外的花盆先补被压毁处。寒冰菇在任意排的空盆都能冻结全场：敌人逼近没有清洁车的房子、目标排缺盆或火球正在滚来时，其他排的空盆也能放冰菇救急。头部可受伤时，任意排的一张辣椒都会打中并解除僵王的冰冻；若用辣椒救急，爆炸后再补冰。先读当前卡数和空盆表，再逐步选落点；超额的即时种植会跳过，该组其他即时植物照做。\n\n需要跨多次补卡继续反应时，给传送带种植的 `pvz_arm` 加 `waitForCards:true` 并指定 `maxFirings`（最多16），步骤用缺省 `when:now`。即使现在没有冰菇或辣椒，也可预先安排；条件成立但缺卡时继续等，新卡到达后若条件仍成立就执行，不必每来一张再安排。它不提前占卡，其他任务可先用掉卡片；落点仍须有空盆。每次打响后仍须条件先变假再变真，缺卡不消耗次数。\n\n无有效清洁车的排有进屋威胁时，先冻结或清掉敌人，再补投手和打僵王。寒冰菇的近屋救急可提前安排：把 `zombie:{row:[1,2,3,4,5],maxColumn:4,immobilized:false,hasUsableMower:false}` 与低头解冻、火球条件用 `any` 合并，并配 `waitForCards:true` 持续等补卡；按敌人速度和防线调整列界限。`hasUsableMower:false` 逐排排除仍有待命或正在清路的车，已压毁的车不算，之后哪一排失车也会纳入。只要仍有符合筛选条件的未定身敌人，条件就持续为真；观察到条件变假后才能再次触发，仍受 `maxFirings` 和卡数预算限制。冰车不受寒冰减速或定身；跳跃中的跳跳僵尸会减速但不定身。`immobilized:false` 只说明当前未定身，不保证能被冻结；这些敌人可能让合并条件持续为真，需要用辣椒等处理，或把头部与近屋反应分开安排。冰火球会压毁经过的植物和清洁车；没有清洁车的排若有僵尸进屋，就会失败，处理球时也要兼顾这些敌人。\n\n击倒僵王后，棋盘上的向日葵奖杯需要用 `collect what:\"award\"` 领取，才会进入奖励结算；随后按可用菜单动作继续。\n\n模拟光标只更新游戏内部输入，不占系统鼠标。游戏窗口必须是 800×600 并整个落在同一块显示器里；被拖走或改了尺寸时状态会写出实测尺寸，植入件会把窗口摆回去，等窗口恢复的事件到了再继续。\n"
+    }
+  ]
+}
