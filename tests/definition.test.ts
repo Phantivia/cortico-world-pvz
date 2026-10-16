@@ -39,6 +39,6 @@ it.runIf(process.platform === 'win32')('游戏程序填成目录时说清是目�
   expect(() => PVZ.preflight?.(context(dir))).toThrow('当前路径是目录');
 });
 
-it.runIf(process.platform === 'win32')('没填游戏程序时指路控制台的选择器', () => {
+it.runIf(process.platform === 'win32')('没填游戏程序时指路 WebUI 的选择器', () => {
   expect(() => PVZ.preflight?.(context(''))).toThrow('请先选择');
 });

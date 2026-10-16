@@ -125,7 +125,7 @@ async function mount(proxy: PvzWorldProxy, targetHost = host()): Promise<FakePvz
 }
 
 async function launch(proxy: PvzWorldProxy): Promise<unknown> {
-  return proxy.console().invoke!('game', 'start', []);
+  return proxy.webUi().invoke!('game', 'start', []);
 }
 
 async function mountAndLaunch(proxy: PvzWorldProxy, targetHost = host()): Promise<FakePvzHost> {
@@ -139,7 +139,7 @@ const liveProcess = async (pid: number): Promise<string | null> => (
 );
 
 describe('PvZ 持久进程所有权', () => {
-  it('挂载后保持静止，控制台启动才创建 引擎子进程 并投递说明', async () => {
+  it('挂载后保持静止，WebUI 启动才创建 引擎子进程 并投递说明', async () => {
     const cfg = config();
     const engine = new FakeEngine(identity);
     const targetHost = host();
@@ -153,7 +153,7 @@ describe('PvZ 持久进程所有权', () => {
 
     await mount(proxy, targetHost);
     expect(forks).toBe(0);
-    expect(await proxy.console().invoke!('game', 'state', [])).toEqual({
+    expect(await proxy.webUi().invoke!('game', 'state', [])).toEqual({
       phase: 'stopped', detail: '未启动，不会连接植入件', pid: null, stoppable: false,
     });
     expect(targetHost.events).toEqual([]);
@@ -167,7 +167,7 @@ describe('PvZ 持久进程所有权', () => {
       },
       options: { trigger: 'flush' },
     });
-    expect(await proxy.console().invoke!('game', 'state', [])).toMatchObject({
+    expect(await proxy.webUi().invoke!('game', 'state', [])).toMatchObject({
       phase: 'running', pid: 4242,
     });
     await proxy.stop();
@@ -518,7 +518,7 @@ describe('PvZ 持久进程所有权', () => {
 
     expect(sidecars).toHaveLength(1);
     expect(existsSync(leasePath)).toBe(false);
-    expect(await proxy.console().invoke!('game', 'state', [])).toMatchObject({
+    expect(await proxy.webUi().invoke!('game', 'state', [])).toMatchObject({
       phase: 'stopped', stoppable: false,
     });
     expect(targetHost.events.map(({ event }) => event.text))
@@ -550,13 +550,13 @@ describe('PvZ 持久进程所有权', () => {
 
     // 首次 + 预算内 4 次重启，之后不再 fork
     expect(forks).toBe(5);
-    expect(await proxy.console().invoke!('game', 'state', [])).toMatchObject({ phase: 'error' });
+    expect(await proxy.webUi().invoke!('game', 'state', [])).toMatchObject({ phase: 'error' });
     expect(targetHost.events.map(({ event }) => event.text))
       .toContainEqual(expect.stringContaining('恢复失败，已停手'));
     await proxy.stop();
   });
 
-  it('控制台停止关掉游戏并回收 lease，之后还能重新启动', async () => {
+  it('WebUI 停止关掉游戏并回收 lease，之后还能重新启动', async () => {
     const cfg = config(true);
     const leasePath = ownershipPathForExecutable(cfg.executable, lifecycleDirectory);
     let forks = 0;
@@ -569,7 +569,7 @@ describe('PvZ 持久进程所有权', () => {
     const targetHost = await mountAndLaunch(proxy);
     expect(existsSync(leasePath)).toBe(true);
 
-    expect(await proxy.console().invoke!('game', 'stop', [])).toMatchObject({
+    expect(await proxy.webUi().invoke!('game', 'stop', [])).toMatchObject({
       phase: 'stopped', detail: '操作员已停止：游戏已退出', stoppable: false,
     });
     expect(existsSync(leasePath)).toBe(false);
@@ -578,7 +578,7 @@ describe('PvZ 持久进程所有权', () => {
 
     await launch(proxy);
     expect(forks).toBe(2);
-    expect(await proxy.console().invoke!('game', 'state', [])).toMatchObject({ phase: 'running' });
+    expect(await proxy.webUi().invoke!('game', 'state', [])).toMatchObject({ phase: 'running' });
     await proxy.stop();
   });
 

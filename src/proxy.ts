@@ -19,7 +19,7 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type {
   World,
   WorldHost,
-  WorldConsoleDecl,
+  WorldWebUiDecl,
   ToolDef,
   ToolOutcome,
 } from 'cortico/core/types.ts';
@@ -48,7 +48,7 @@ const INIT_TIMEOUT_MS = 3 * 60_000;
 const DEFERRED_RENDER_TIMEOUT_MS = 2500;
 const RESTART_DELAY_MS = 3000;
 /**
- * 自动重启仅恢复 引擎子进程 掉线，并受滚动窗口次数上限限制；超限时停止并报告。游戏退出后保持未启动，等待操作员从控制台启动。
+ * 自动重启仅恢复 引擎子进程 掉线，并受滚动窗口次数上限限制；超限时停止并报告。游戏退出后保持未启动，等待操作员从 WebUI 启动。
  */
 const RESTART_MAX_ATTEMPTS = 4;
 const RESTART_WINDOW_MS = 10 * 60_000;
@@ -109,7 +109,7 @@ export class PvzWorldProxy implements World {
   private ownershipRecordPath: string | null = null;
   private startingOwnerToken: string | null = null;
   private prelaunchFailureGeneration: number | null = null;
-  private declCache: Pick<WorldConsoleDecl, 'lamps' | 'badges' | 'links'> = {};
+  private declCache: Pick<WorldWebUiDecl, 'lamps' | 'badges' | 'links'> = {};
   private launchRequested = false;
   private launchError: string | null = null;
   /** 停在「未启动」时的原因(人按了停止 / 游戏自己没了),没有就是从没起过。 */
@@ -156,7 +156,7 @@ export class PvzWorldProxy implements World {
     }));
   }
 
-  console(): WorldConsoleDecl {
+  webUi(): WorldWebUiDecl {
     const game = this.gamePanelState();
     return {
       lamps: this.declCache.lamps ?? [
@@ -241,7 +241,7 @@ export class PvzWorldProxy implements World {
   /**
    * 关掉这一局:引擎子进程 停机回执 → 目标进程退出 → 回收持久所有权记录。
    *
-   * World 停机(`stop`)与控制台「停止」共用这一条,两边唯一的差别是后者把 World 留在
+   * World 停机(`stop`)与 WebUI「停止」共用这一条,两边唯一的差别是后者把 World 留在
    * 挂载态。`requested` 是进来这一刻的 launchRequested:引擎子进程 已经不在、而游戏
    * 还活着时,要先按租约把 引擎子进程 拉回来才关得掉游戏。
    */
@@ -908,7 +908,7 @@ export class PvzWorldProxy implements World {
   private async invokePanel(panel: string, method: string): Promise<PvzGamePanelState> {
     if (panel !== 'game') throw new Error(`未知面板:${panel}`);
     if (method === 'state') return this.gamePanelState();
-    if (method === 'stop') return await this.stopFromConsole();
+    if (method === 'stop') return await this.stopFromWebUi();
     if (method !== 'start') throw new Error(`未知面板方法:${method}`);
     if (!this.host) throw new Error('PvZ World 尚未挂载');
     const host = this.host;
@@ -953,12 +953,12 @@ export class PvzWorldProxy implements World {
   }
 
   /**
-   * 控制台「停止」:与 World 停机同一条收尾,只是 World 本身留在挂载态。
+   * WebUI「停止」:与 World 停机同一条收尾,只是 World 本身留在挂载态。
    *
    * 先把 launchRequested 落下再收尾——中途 引擎子进程 退出时 `onExit` 只看这一个标志
    * 判断"是不是意外",不落它就会一边关一边自动重启。
    */
-  private async stopFromConsole(): Promise<PvzGamePanelState> {
+  private async stopFromWebUi(): Promise<PvzGamePanelState> {
     const host = this.host;
     if (!host) throw new Error('PvZ World 尚未挂载');
     const requested = this.launchRequested;

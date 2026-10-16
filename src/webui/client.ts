@@ -1,7 +1,7 @@
 import type {
-  ConsoleClientBundle,
-  ConsolePanelContext,
-  ConsolePanel,
+  WebUiClientBundle,
+  WebUiPanelContext,
+  WebUiPanel,
 } from 'cortico/web/shared/client-panel.ts';
 
 interface PvzGameState {
@@ -19,8 +19,8 @@ const PHASE_LABEL: Record<PvzGameState['phase'], string> = {
   error: '启动失败',
 };
 
-const gamePanel: ConsolePanel = {
-  mount(ctx: ConsolePanelContext) {
+const gamePanel: WebUiPanel = {
+  mount(ctx: WebUiPanelContext) {
     const { root, ui } = ctx;
     const card = ui.sheet({
       title: '植物大战僵尸',
@@ -104,6 +104,6 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-const bundle: ConsoleClientBundle = { panels: { game: gamePanel } };
+const bundle: WebUiClientBundle = { panels: { game: gamePanel } };
 
 export default bundle;

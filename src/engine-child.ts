@@ -117,7 +117,7 @@ function applyCfg(target: Record<string, unknown>, next: Record<string, unknown>
 
 function pushStatus(): void {
   if (!mod) return;
-  const decl = mod.console();
+  const decl = mod.webUi();
   const note = {
     kind: 'status' as const,
     decl: { lamps: decl.lamps, badges: decl.badges, links: decl.links },
