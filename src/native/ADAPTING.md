@@ -11,7 +11,7 @@ be re-established for a new build, and how each piece is tested.
 | Fact | Value | Declared in |
 |---|---|---|
 | Profile name | `goty-apac-ja-chs-south_sniper` | `pvz::kProfileName` |
-| Product | PopCap Plants vs. Zombies, GOTY, APAC Japanese localized branch (Chinese resources) | README "Supported build" |
+| Product | PopCap Plants vs. Zombies, GOTY, APAC Japanese localized branch (Chinese resources) | [`docs/internals.md`](../../docs/internals.md) "Supported build" |
 | FileVersion | `1.2.0.1073` (installer metadata says `1.1.0.1056`) | `pvz::kExecutableVersion` |
 | `PlantsVsZombies.exe` | 3 703 808 bytes, SHA-256 `9ba1c9b2…7b7198ed` | `pvz::kExecutableSha256`, `fingerprint.ts` |
 | `main.pak` | 50 651 354 bytes, SHA-256 `89971baf…8c6ba9b8` | `fingerprint.ts` |
@@ -144,7 +144,7 @@ add one for every new relation you rely on.
   only if observations name the wrong plant.
 - Every user-visible reason string added to the native code needs an entry in
   `native-reasons.ts`; the reasons test fails otherwise.
-- Update README "Supported build", `README.md` in this directory, and the table in section 1.
+- Update "Supported build" in `docs/internals.md`, `README.md` in this directory, and the table in section 1.
 
 ## 4. Testing
 
@@ -191,7 +191,7 @@ match the binaries.
    `title_continue`, main-menu actions, a profile selection, the seed picker (capacity and
    chosen seeds), a board (cells, cards with cost and cooldown, sun, planting on lawn, water and
    roof, shovel, collection), pause and restart dialogs, an award screen and `lastRun`.
-4. Exercise the special-level contracts listed in the package README that the new build ships,
+4. Exercise the special-level contracts listed in [`docs/internals.md`](../../docs/internals.md) that the new build ships,
    one mechanism at a time; each has a dedicated action and a verification fence.
 5. Let a sun sweep run and confirm collection receipts and that the physical mouse stays free.
 

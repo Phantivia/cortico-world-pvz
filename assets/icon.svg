@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#21402c"/>
+      <stop offset="1" stop-color="#112016"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <clipPath id="lawn">
+      <rect x="72" y="282" width="368" height="158" rx="30"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- a sun -->
+  <circle cx="368" cy="136" r="58" fill="#ffd166" opacity="0.45" filter="url(#glow)"/>
+  <g stroke="#ffd166" stroke-width="14" stroke-linecap="round">
+    <line x1="368" y1="52" x2="368" y2="70"/>
+    <line x1="368" y1="202" x2="368" y2="220"/>
+    <line x1="284" y1="136" x2="302" y2="136"/>
+    <line x1="434" y1="136" x2="452" y2="136"/>
+    <line x1="309" y1="77" x2="321" y2="89"/>
+    <line x1="415" y1="183" x2="427" y2="195"/>
+    <line x1="309" y1="195" x2="321" y2="183"/>
+    <line x1="415" y1="89" x2="427" y2="77"/>
+  </g>
+  <circle cx="368" cy="136" r="46" fill="#ffd166"/>
+  <circle cx="354" cy="120" r="12" fill="#ffffff" opacity="0.7"/>
+
+  <!-- the lawn grid -->
+  <g clip-path="url(#lawn)">
+    <rect x="72" y="282" width="368" height="158" fill="#3f8f4f"/>
+    <rect x="72" y="282" width="92" height="79" fill="#57b263"/>
+    <rect x="256" y="282" width="92" height="79" fill="#57b263"/>
+    <rect x="164" y="361" width="92" height="79" fill="#57b263"/>
+    <rect x="348" y="361" width="92" height="79" fill="#57b263"/>
+  </g>
+  <rect x="72" y="282" width="368" height="158" rx="30" fill="none" stroke="#ffffff" stroke-width="7"/>
+
+  <!-- a sprout planted in one cell -->
+  <path d="M210 322 C 208 270, 214 236, 224 206" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M222 214 C 186 214, 150 196, 136 160 C 176 152, 212 172, 222 214 Z" fill="#7be0a8" stroke="#ffffff" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M220 232 C 236 196, 270 176, 306 182 C 294 220, 260 238, 220 232 Z" fill="#7be0a8" stroke="#ffffff" stroke-width="8" stroke-linejoin="round"/>
+  <ellipse cx="210" cy="326" rx="34" ry="10" fill="#1d4426" opacity="0.6"/>
+</svg>

@@ -1,8 +1,9 @@
 {
   "name": "cortico-world-pvz",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
-  "description": "Cortico World: the original PopCap Plants vs. Zombies as a semantic, event-driven World — x86 implant, named-pipe bridge, task queue with receipts",
+  "description": "Cortico World: lets Coo play the original PopCap Plants vs. Zombies through a native implant that reads semantic game state and queues verified in-game actions",
+  "author": "Phantivia",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -29,14 +30,32 @@
   "cortico": {
     "kind": "world",
     "api": 6,
+    "displayName": "植物大战僵尸",
+    "icon": "assets/icon.png",
     "webUiClient": "dist/webui.js",
-    "describe": "describe.json"
+    "describe": "describe.json",
+    "tags": [
+      "game",
+      "streaming",
+      "external-setup"
+    ],
+    "locales": {
+      "zh": {
+        "displayName": "植物大战僵尸",
+        "description": "让 Coo 玩原版 PopCap《植物大战僵尸》:植入件从游戏内存读出语义化的画面,Coo 自己选卡、种植、铲除、点菜单。\n\n**功能**\n- 读出当前界面、棋盘每格的植物和僵尸、卡片冷却、阳光与关卡进度\n- 一次排一串动作，任务结束时回执结果\n- 预设条件触发：僵尸走近、卡片就绪、某格空出时自动出手\n- 阳光自动收，冒险模式和多数小游戏都能玩\n- 光标画在游戏窗口里，不占系统鼠标\n\n**安装后还需要**\n1. 自备 GOTY 1.2.0.1073 亚太日文分支的中文资源版游戏,PlantsVsZombies.exe 与 main.pak 的哈希要对上\n2. 安装带 x86 C++ 工具链的 Visual Studio Build Tools 2022\n3. 在配置页选好 PlantsVsZombies.exe,第一次点「启动游戏」时 World 从 src/native/ 编译植入件\n4. 详细步骤见 [README](https://github.com/Phantivia/cortico-world-pvz#安装前准备)\n\n仅 Windows。CortiV 直播验证过的参考实现。"
+      },
+      "en": {
+        "displayName": "Plants vs. Zombies",
+        "description": "Lets Coo play the original PopCap Plants vs. Zombies. An implant reads semantic state from the game memory, and Coo picks seeds, plants, shovels and works the menus on its own.\n\n**Features**\n- Reads the current screen, the plants and zombies in every cell, card cooldowns, sun and level progress\n- Queues a series of actions, with a receipt when the task ends\n- Arms triggers that act when zombies approach, a card becomes ready or a cell frees up\n- Collects sun automatically; plays Adventure and most minigames\n- Draws its cursor inside the game window and leaves the system mouse alone\n\n**After installing you also need**\n1. Your own copy of the GOTY 1.2.0.1073 APAC Japanese branch with Chinese resources, whose PlantsVsZombies.exe and main.pak hashes must match\n2. Visual Studio Build Tools 2022 with the x86 C++ toolchain\n3. Choose PlantsVsZombies.exe on the configuration page; the World compiles the implant from src/native/ the first time you press Start game\n4. Full steps in the [README](https://github.com/Phantivia/cortico-world-pvz#before-you-install)\n\nWindows only. A reference implementation verified on the CortiV live stream."
+      }
+    }
   },
   "files": [
     "src",
     "dist",
     "scripts",
     "cursor-companion",
+    "assets",
     "describe.json",
     "CHANGELOG.md",
     "README.md",
